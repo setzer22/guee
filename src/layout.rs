@@ -57,6 +57,14 @@ impl Layout {
         self.bounds = self.bounds.translate(translation);
     }
 
+    pub fn translate_x(&mut self, dx: f32) {
+        self.bounds = self.bounds.translate(Vec2::new(dx, 0.0));
+    }
+
+    pub fn translate_y(&mut self, dy: f32) {
+        self.bounds = self.bounds.translate(Vec2::new(0.0, dy));
+    }
+
     pub fn translated(mut self, translation: Vec2) -> Self {
         self.translate(translation);
         self

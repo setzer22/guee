@@ -51,6 +51,9 @@ impl Widget for Button {
             layout::SizeHint::Fill => available.y,
         };
 
+        contents_layout
+            .translate_x((width - 2.0 * padding.x - contents_layout.bounds.width()) * 0.5);
+
         Layout::with_children(Vec2::new(width, height), vec![contents_layout])
     }
 
@@ -120,7 +123,10 @@ impl Widget for Text {
     }
 
     fn size_hints(&mut self) -> layout::SizeHints {
-        todo!()
+        SizeHints {
+            width: layout::SizeHint::Shrink,
+            height: layout::SizeHint::Shrink,
+        }
     }
 }
 
@@ -151,6 +157,24 @@ impl Widget for VBoxContainer {
                 .translated(Vec2::Y * main_offset);
             main_offset += ch_layout.bounds.height() + self.separation;
             children.push(ch_layout)
+        }
+
+        // Apply cross-axis alignment
+        for (ch, ch_layout) in self.contents.iter_mut().zip(children.iter_mut()) {
+            match ch.widget.size_hints().width {
+                layout::SizeHint::Shrink => match self.cross_align {
+                    Align::Start => {}
+                    Align::End => {
+                        ch_layout.translate_x(cross_width - ch_layout.bounds.width());
+                    }
+                    Align::Center => {
+                        ch_layout.translate_x((cross_width - ch_layout.bounds.width()) * 0.5);
+                    }
+                },
+                layout::SizeHint::Fill => {
+                    // No alignment needed.
+                }
+            }
         }
 
         Layout::with_children(Vec2::new(cross_width, main_offset), children)
@@ -201,7 +225,11 @@ fn main() {
                     padding: Vec2::new(15.0, 15.0),
                     hints: LayoutHints {
                         size_hints: SizeHints {
-                            width: layout::SizeHint::Shrink,
+                            width: if i % 2 == 0 {
+                                layout::SizeHint::Shrink
+                            } else {
+                                layout::SizeHint::Fill
+                            },
                             ..Default::default()
                         },
                         ..Default::default()
@@ -218,7 +246,7 @@ fn main() {
             ..Default::default()
         },
         main_align: Align::Start,
-        cross_align: Align::Start,
+        cross_align: Align::Center,
     });
 
     let ctx = Context {
