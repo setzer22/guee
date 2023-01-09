@@ -9,12 +9,19 @@ pub struct Layout {
     pub children: Vec<Layout>,
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct LayoutHints {
     pub size_hints: SizeHints,
-    pub min_size: Vec2,
-    pub max_size: Vec2,
     pub weight: u32,
+}
+
+impl Default for LayoutHints {
+    fn default() -> Self {
+        Self {
+            size_hints: Default::default(),
+            weight: 1,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -25,7 +32,7 @@ pub enum Align {
     Center,
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum SizeHint {
     #[default]
     Shrink,
@@ -81,4 +88,11 @@ impl Layout {
             ch.to_absolute(self.bounds.min.to_vec2())
         }
     }
+}
+
+
+#[derive(Copy, Clone, Debug)]
+pub enum Axis {
+    Vertical,
+    Horizontal
 }

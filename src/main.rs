@@ -8,7 +8,7 @@ use epaint::{
     Vec2,
 };
 use itertools::Itertools;
-use layout::{Align, Layout, LayoutHints, SizeHints};
+use layout::{Align, Layout, LayoutHints, SizeHint, SizeHints};
 use widget::{DynWidget, Widget};
 use winit::{
     event_loop::{ControlFlow, EventLoop},
@@ -35,13 +35,9 @@ pub struct Button {
 impl Widget for Button {
     fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
         let padding = self.padding;
-        let mut contents_layout = self
-            .contents
-            .widget
-            .layout(ctx, available - padding)
-            .translated(padding);
+        let mut contents_layout = self.contents.widget.layout(ctx, available - padding);
 
-        let size_hints = self.size_hints();
+        let size_hints = self.hints.size_hints;
         let width = match size_hints.width {
             layout::SizeHint::Shrink => contents_layout.bounds.width() + 2.0 * padding.x,
             layout::SizeHint::Fill => available.x,
@@ -51,8 +47,10 @@ impl Widget for Button {
             layout::SizeHint::Fill => available.y,
         };
 
-        contents_layout
-            .translate_x((width - 2.0 * padding.x - contents_layout.bounds.width()) * 0.5);
+        contents_layout.translate(Vec2::new(
+            (width - contents_layout.bounds.width()) * 0.5,
+            (height - contents_layout.bounds.height()) * 0.5,
+        ));
 
         Layout::with_children(Vec2::new(width, height), vec![contents_layout])
     }
@@ -74,8 +72,8 @@ impl Widget for Button {
             + self.padding * 2.0
     }
 
-    fn size_hints(&mut self) -> layout::SizeHints {
-        self.hints.size_hints
+    fn layout_hints(&self) -> layout::LayoutHints {
+        self.hints
     }
 }
 
@@ -122,10 +120,13 @@ impl Widget for Text {
         galley.rect.size()
     }
 
-    fn size_hints(&mut self) -> layout::SizeHints {
-        SizeHints {
-            width: layout::SizeHint::Shrink,
-            height: layout::SizeHint::Shrink,
+    fn layout_hints(&self) -> layout::LayoutHints {
+        LayoutHints {
+            size_hints: SizeHints {
+                width: SizeHint::Shrink,
+                height: SizeHint::Shrink,
+            },
+            weight: 1,
         }
     }
 }
@@ -135,6 +136,7 @@ pub struct VBoxContainer {
     contents: Vec<DynWidget>,
     separation: f32,
     layout_hints: LayoutHints,
+    // TODO: Not yet implemented
     main_align: Align,
     cross_align: Align,
 }
@@ -146,10 +148,40 @@ impl Widget for VBoxContainer {
             layout::SizeHint::Fill => available.x,
         };
 
+        // Some early computations
+        let mut total_filled_weight = 0;
+        let mut total_shrink_height = 0.0;
+        let mut fill_child_count = 0;
+        for c in &mut self.contents {
+            match c.widget.layout_hints().size_hints.height {
+                SizeHint::Shrink => {
+                    // TODO: This available here is not correct, some things
+                    // like text wrapping may fail to compute.
+                    total_shrink_height += c.widget.min_size(ctx, available).y;
+                }
+                SizeHint::Fill => {
+                    fill_child_count += 1;
+                    total_filled_weight += c.widget.layout_hints().weight;
+                }
+            }
+        }
+        let total_separation = self.separation * (self.contents.len() - 1) as f32;
+
+        // How much total space elements on the main axis would get to grow
+        let wiggle_room = available.y - (total_shrink_height + total_separation);
+
         let mut main_offset = 0.0;
         let mut children = vec![];
         for ch in &mut self.contents {
-            let available = Vec2::new(cross_width, available.y - main_offset);
+            let available = match ch.widget.layout_hints().size_hints.height {
+                SizeHint::Shrink => Vec2::new(cross_width, available.y - main_offset),
+                SizeHint::Fill => Vec2::new(
+                    cross_width,
+                    wiggle_room
+                        * (ch.widget.layout_hints().weight as f32 / total_filled_weight as f32),
+                ),
+            };
+
             let ch_layout = ch
                 .widget
                 .layout(ctx, available)
@@ -160,8 +192,8 @@ impl Widget for VBoxContainer {
         }
 
         // Apply cross-axis alignment
-        for (ch, ch_layout) in self.contents.iter_mut().zip(children.iter_mut()) {
-            match ch.widget.size_hints().width {
+        for (ch, ch_layout) in self.contents.iter().zip(children.iter_mut()) {
+            match ch.widget.layout_hints().size_hints.width {
                 layout::SizeHint::Shrink => match self.cross_align {
                     Align::Start => {}
                     Align::End => {
@@ -207,14 +239,14 @@ impl Widget for VBoxContainer {
         Vec2::new(size_x, size_y)
     }
 
-    fn size_hints(&mut self) -> layout::SizeHints {
-        self.layout_hints.size_hints
+    fn layout_hints(&self) -> LayoutHints {
+        self.layout_hints
     }
 }
 
 fn main() {
     let mut button_column = DynWidget::new(VBoxContainer {
-        contents: (0..10)
+        contents: (0..8)
             .map(|i| {
                 DynWidget::new(Button {
                     pressed: false,
@@ -230,9 +262,17 @@ fn main() {
                             } else {
                                 layout::SizeHint::Fill
                             },
-                            ..Default::default()
+                            height: if i == 4 || i == 6 {
+                                layout::SizeHint::Fill
+                            } else {
+                                layout::SizeHint::Shrink
+                            },
                         },
-                        ..Default::default()
+                        weight: if i == 4 {
+                            2
+                        } else {
+                            1
+                        },
                     },
                 })
             })

@@ -6,7 +6,7 @@ pub trait Widget: dyn_clone::DynClone {
     fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout;
     fn draw(&mut self, ctx: &Context, layout: &Layout);
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2;
-    fn size_hints(&mut self) -> SizeHints;
+    fn layout_hints(&self) -> LayoutHints;
 }
 
 dyn_clone::clone_trait_object!(Widget);
