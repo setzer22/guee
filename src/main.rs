@@ -136,7 +136,6 @@ pub struct VBoxContainer {
     contents: Vec<DynWidget>,
     separation: f32,
     layout_hints: LayoutHints,
-    // TODO: Not yet implemented
     main_align: Align,
     cross_align: Align,
 }
@@ -209,7 +208,30 @@ impl Widget for VBoxContainer {
             }
         }
 
-        Layout::with_children(Vec2::new(cross_width, main_offset), children)
+        let content_height = main_offset;
+
+        // Apply main axis alignment
+        if fill_child_count == 0 {
+            // Only when there's no child set to fill on the main axis, we have
+            // to do alignment because otherwise this layout takes full space
+            let offset = match self.main_align {
+                Align::Start => 0.0,
+                Align::End => available.y - content_height,
+                Align::Center => (available.y - content_height) * 0.5,
+            };
+
+            for ch_layout in &mut children {
+                ch_layout.translate_y(offset);
+            }
+        }
+
+        Layout::with_children(
+            Vec2::new(
+                cross_width,
+                children.last().map(|x| x.bounds.bottom()).unwrap_or(0.0),
+            ),
+            children,
+        )
 
         // WIP: For the children that want to fill on the main (vertical) axis,
         // compute the remaining width and redistribution based on weight.
@@ -257,22 +279,18 @@ fn main() {
                     padding: Vec2::new(15.0, 15.0),
                     hints: LayoutHints {
                         size_hints: SizeHints {
-                            width: if i % 2 == 0 {
+                            width: /*if i % 2 == 0 {
                                 layout::SizeHint::Shrink
                             } else {
                                 layout::SizeHint::Fill
-                            },
-                            height: if i == 4 || i == 6 {
+                            }*/ layout::SizeHint::Fill,
+                            height: /*if i == 4 || i == 6 {
                                 layout::SizeHint::Fill
                             } else {
                                 layout::SizeHint::Shrink
-                            },
+                            }*/ layout::SizeHint::Shrink,
                         },
-                        weight: if i == 4 {
-                            2
-                        } else {
-                            1
-                        },
+                        weight: if i == 4 { 2 } else { 1 },
                     },
                 })
             })
@@ -285,7 +303,7 @@ fn main() {
             },
             ..Default::default()
         },
-        main_align: Align::Start,
+        main_align: Align::End,
         cross_align: Align::Center,
     });
 
