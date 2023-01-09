@@ -8,7 +8,7 @@ use epaint::{
     Vec2,
 };
 use itertools::Itertools;
-use layout::{Align, Layout, LayoutHints, SizeHint, SizeHints};
+use layout::{Align, Axis, AxisDirections, Layout, LayoutHints, SizeHint, SizeHints};
 use widget::{DynWidget, Widget};
 use winit::{
     event_loop::{ControlFlow, EventLoop},
@@ -116,6 +116,7 @@ impl Widget for Text {
     }
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
+        dbg!(available);
         let galley = self.ensure_galley(&ctx.fonts, available.x);
         galley.rect.size()
     }
@@ -133,6 +134,7 @@ impl Widget for Text {
 
 #[derive(Clone)]
 pub struct VBoxContainer {
+    axis: Axis,
     contents: Vec<DynWidget>,
     separation: f32,
     layout_hints: LayoutHints,
@@ -142,21 +144,25 @@ pub struct VBoxContainer {
 
 impl Widget for VBoxContainer {
     fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
-        let cross_width = match self.layout_hints.size_hints.width {
-            layout::SizeHint::Shrink => self.min_size(ctx, available).x,
-            layout::SizeHint::Fill => available.x,
+        println!("Start");
+        println!("Cross space");
+        let axis = self.axis;
+        let cross_space = match self.layout_hints.size_hints.cross_dir(axis) {
+            layout::SizeHint::Shrink => self.min_size(ctx, available).cross_dir(axis),
+            layout::SizeHint::Fill => available.cross_dir(axis),
         };
 
+        println!("Early computations");
         // Some early computations
         let mut total_filled_weight = 0;
-        let mut total_shrink_height = 0.0;
+        let mut total_shrink_space = 0.0;
         let mut fill_child_count = 0;
         for c in &mut self.contents {
-            match c.widget.layout_hints().size_hints.height {
+            match c.widget.layout_hints().size_hints.main_dir(axis) {
                 SizeHint::Shrink => {
                     // TODO: This available here is not correct, some things
                     // like text wrapping may fail to compute.
-                    total_shrink_height += c.widget.min_size(ctx, available).y;
+                    total_shrink_space += c.widget.min_size(ctx, available).main_dir(axis);
                 }
                 SizeHint::Fill => {
                     fill_child_count += 1;
@@ -167,39 +173,52 @@ impl Widget for VBoxContainer {
         let total_separation = self.separation * (self.contents.len() - 1) as f32;
 
         // How much total space elements on the main axis would get to grow
-        let wiggle_room = available.y - (total_shrink_height + total_separation);
+        let wiggle_room = available.main_dir(axis) - (total_shrink_space + total_separation);
 
+        println!("Child layout");
         let mut main_offset = 0.0;
         let mut children = vec![];
         for ch in &mut self.contents {
-            let available = match ch.widget.layout_hints().size_hints.height {
-                SizeHint::Shrink => Vec2::new(cross_width, available.y - main_offset),
-                SizeHint::Fill => Vec2::new(
-                    cross_width,
+            let c_available = match ch.widget.layout_hints().size_hints.main_dir(axis) {
+                SizeHint::Shrink => {
+                    axis.new_vec2(available.main_dir(axis) - main_offset, cross_space)
+                }
+                SizeHint::Fill => axis.new_vec2(
                     wiggle_room
                         * (ch.widget.layout_hints().weight as f32 / total_filled_weight as f32),
+                    cross_space,
                 ),
             };
 
+            let axis_vec = match axis {
+                Axis::Vertical => Vec2::Y,
+                Axis::Horizontal => Vec2::X,
+            };
             let ch_layout = ch
                 .widget
-                .layout(ctx, available)
+                .layout(ctx, c_available)
                 .clear_translation()
-                .translated(Vec2::Y * main_offset);
-            main_offset += ch_layout.bounds.height() + self.separation;
+                .translated(axis_vec * main_offset);
+            main_offset += ch_layout.bounds.size().main_dir(axis) + self.separation;
             children.push(ch_layout)
         }
 
         // Apply cross-axis alignment
         for (ch, ch_layout) in self.contents.iter().zip(children.iter_mut()) {
-            match ch.widget.layout_hints().size_hints.width {
+            match ch.widget.layout_hints().size_hints.cross_dir(axis) {
                 layout::SizeHint::Shrink => match self.cross_align {
                     Align::Start => {}
                     Align::End => {
-                        ch_layout.translate_x(cross_width - ch_layout.bounds.width());
+                        ch_layout.translate_cross(
+                            axis,
+                            cross_space - ch_layout.bounds.size().cross_dir(axis),
+                        );
                     }
                     Align::Center => {
-                        ch_layout.translate_x((cross_width - ch_layout.bounds.width()) * 0.5);
+                        ch_layout.translate_cross(
+                            axis,
+                            (cross_space - ch_layout.bounds.size().cross_dir(axis)) * 0.5,
+                        );
                     }
                 },
                 layout::SizeHint::Fill => {
@@ -208,7 +227,7 @@ impl Widget for VBoxContainer {
             }
         }
 
-        let content_height = main_offset;
+        let content_main_size = main_offset;
 
         // Apply main axis alignment
         if fill_child_count == 0 {
@@ -216,29 +235,26 @@ impl Widget for VBoxContainer {
             // to do alignment because otherwise this layout takes full space
             let offset = match self.main_align {
                 Align::Start => 0.0,
-                Align::End => available.y - content_height,
-                Align::Center => (available.y - content_height) * 0.5,
+                Align::End => available.main_dir(axis) - content_main_size,
+                Align::Center => (available.main_dir(axis) - content_main_size) * 0.5,
             };
 
             for ch_layout in &mut children {
-                ch_layout.translate_y(offset);
+                ch_layout.translate_main(axis, offset);
             }
         }
 
         Layout::with_children(
             Vec2::new(
-                cross_width,
-                children.last().map(|x| x.bounds.bottom()).unwrap_or(0.0),
+                cross_space,
+                children
+                    .last()
+                    // The rightmost or bottommost position, depending on axis
+                    .map(|x| x.bounds.max.to_vec2().main_dir(axis))
+                    .unwrap_or(0.0),
             ),
             children,
         )
-
-        // WIP: For the children that want to fill on the main (vertical) axis,
-        // compute the remaining width and redistribution based on weight.
-        //
-        // WIP2: There's no such thing as a cross_align of Expand. Individual
-        // elements are expanded or aligned based on their size hints. Having
-        // both is redundant.
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
@@ -248,17 +264,23 @@ impl Widget for VBoxContainer {
     }
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        let mut size_x = 0.0;
-        let mut size_y = 0.0;
+        let axis = self.axis;
+        let mut size_main = 0.0;
+        let mut size_cross = 0.0;
 
         for c in &mut self.contents {
-            let c_available = Vec2::new(available.x, available.y - size_y);
-            let s = c.widget.min_size(ctx, c_available);
-            size_x = f32::max(size_x, s.x);
-            size_y += s.y;
+            //Vec2::new(available.x, available.y - size_y);
+            let c_available = axis.vec2_add_to_main(available, -size_main);
+            let s = c.widget.min_size(ctx, dbg!(c_available));
+
+            size_cross = f32::max(size_cross, s.cross_dir(axis));
+            size_main += s.main_dir(axis);
         }
 
-        Vec2::new(size_x, size_y)
+        match axis {
+            Axis::Vertical => Vec2::new(size_cross, size_main),
+            Axis::Horizontal => dbg!(Vec2::new(size_main, size_cross)),
+        }
     }
 
     fn layout_hints(&self) -> LayoutHints {
@@ -268,7 +290,8 @@ impl Widget for VBoxContainer {
 
 fn main() {
     let mut button_column = DynWidget::new(VBoxContainer {
-        contents: (0..8)
+        axis: Axis::Horizontal,
+        contents: (0..5)
             .map(|i| {
                 DynWidget::new(Button {
                     pressed: false,
@@ -283,7 +306,7 @@ fn main() {
                                 layout::SizeHint::Shrink
                             } else {
                                 layout::SizeHint::Fill
-                            }*/ layout::SizeHint::Fill,
+                            }*/ layout::SizeHint::Shrink,
                             height: /*if i == 4 || i == 6 {
                                 layout::SizeHint::Fill
                             } else {
