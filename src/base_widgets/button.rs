@@ -1,4 +1,5 @@
 use crate::{
+    callback::Callback,
     context::Context,
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints, SizeHint},
@@ -7,7 +8,7 @@ use crate::{
 use epaint::{Color32, Pos2, RectShape, Rounding, Shape, Stroke, Vec2};
 use typed_builder::TypedBuilder;
 
-#[derive(Clone, TypedBuilder)]
+#[derive(TypedBuilder)]
 pub struct Button {
     #[builder(default, setter(skip))]
     pub pressed: bool,
@@ -18,6 +19,8 @@ pub struct Button {
     #[builder(default = Vec2::new(10.0, 10.0))]
     pub padding: Vec2,
     pub contents: DynWidget,
+    #[builder(default, setter(skip))]
+    pub on_click: Option<Callback>,
 }
 
 impl Widget for Button {
@@ -47,7 +50,13 @@ impl Widget for Button {
         ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
             rect: layout.bounds,
             rounding: Rounding::same(2.0),
-            fill: Color32::from_rgba_unmultiplied(40, 200, 40, 50),
+            fill: if self.pressed {
+                Color32::from_rgba_unmultiplied(80, 240, 80, 50)
+            } else if self.hovered {
+                Color32::from_rgba_unmultiplied(50, 210, 50, 50)
+            } else {
+                Color32::from_rgba_unmultiplied(35, 195, 35, 50)
+            },
             stroke: Stroke::NONE,
         }));
         self.contents.widget.draw(ctx, &layout.children[0]);
@@ -64,18 +73,29 @@ impl Widget for Button {
         self.hints
     }
 
-    fn on_event(&mut self, layout: &Layout, cursor_position: Pos2, event: &Event) -> EventStatus {
+    fn on_event(&mut self, ctx: &Context, layout: &Layout, cursor_position: Pos2, event: &Event) -> EventStatus {
         if layout.bounds.contains(cursor_position) {
             self.hovered = true;
-        }
-        match event {
-            Event::MousePressed(MouseButton::Primary) => {
-                self.pressed = true;
-                return EventStatus::Consumed;
+            match event {
+                Event::MousePressed(MouseButton::Primary) => {
+                    if let Some(on_click) = self.on_click.take() {
+                        dbg!("on_click!");
+                        ctx.push_callback(on_click)
+                    }
+                    self.pressed = true;
+                    return EventStatus::Consumed;
+                }
+                _ => {}
             }
-            _ => {}
         }
 
         EventStatus::Ignored
+    }
+}
+
+impl Button {
+    pub fn on_click<T: 'static>(mut self, f: impl FnOnce(&mut T) + 'static) -> Self {
+        self.on_click = Some(Callback::from_fn(f));
+        self
     }
 }

@@ -7,7 +7,7 @@ use crate::{
 use epaint::{Pos2, Vec2};
 use typed_builder::TypedBuilder;
 
-#[derive(Clone, TypedBuilder)]
+#[derive(TypedBuilder)]
 pub struct BoxContainer {
     axis: Axis,
     contents: Vec<DynWidget>,
@@ -33,15 +33,17 @@ impl BoxContainer {
 
 impl Widget for BoxContainer {
     fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
-        println!("Start");
-        println!("Cross space");
+        // We do this, so the rest of the code can assume child list is non-empty
+        if self.contents.is_empty() {
+            return Layout::leaf(Vec2::ZERO)
+        }
+
         let axis = self.axis;
         let cross_space = match self.layout_hints.size_hints.cross_dir(axis) {
             SizeHint::Shrink => self.min_size(ctx, available).cross_dir(axis),
             SizeHint::Fill => available.cross_dir(axis),
         };
 
-        println!("Early computations");
         // Some early computations
         let mut total_filled_weight = 0;
         let mut total_shrink_space = 0.0;
@@ -64,7 +66,6 @@ impl Widget for BoxContainer {
         // How much total space elements on the main axis would get to grow
         let wiggle_room = available.main_dir(axis) - (total_shrink_space + total_separation);
 
-        println!("Child layout");
         let mut main_offset = 0.0;
         let mut children = vec![];
         for ch in &mut self.contents {
@@ -176,9 +177,15 @@ impl Widget for BoxContainer {
         self.layout_hints
     }
 
-    fn on_event(&mut self, layout: &Layout, cursor_position: Pos2, event: &Event) -> EventStatus {
+    fn on_event(
+        &mut self,
+        ctx: &Context,
+        layout: &Layout,
+        cursor_position: Pos2,
+        event: &Event,
+    ) -> EventStatus {
         for (ch, ch_layout) in self.contents.iter_mut().zip(layout.children.iter()) {
-            if ch.widget.on_event(ch_layout, cursor_position, event) == EventStatus::Consumed {
+            if ch.widget.on_event(ctx, ch_layout, cursor_position, event) == EventStatus::Consumed {
                 return EventStatus::Consumed;
             }
         }
