@@ -650,6 +650,7 @@ dependencies = [
  "env_logger",
  "epaint",
  "glam",
+ "higher-order-closure",
  "itertools",
  "pollster",
  "slotmap",
@@ -681,6 +682,12 @@ name = "hexf-parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
+
+[[package]]
+name = "higher-order-closure"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c450d87a307c754cbd7718dfca84b8904e313157191fae5b249d37aab216c89"
 
 [[package]]
 name = "ident_case"
