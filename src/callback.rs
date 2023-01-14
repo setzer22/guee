@@ -133,29 +133,45 @@ impl AccessorRegistry {
         }
         to
     }
+
+    pub fn invoke_callback(&self, state: &mut dyn Any, cb: Callback) {
+        // Explicit deref necessary to differentiate between getting the type_id
+        // of the inner type or the reference itself
+        let state_type = (*state).type_id();
+        if state_type == cb.input_type {
+            cb.call(state);
+        } else {
+            let projected = self.access(state, state_type, cb.input_type);
+            cb.call(projected);
+        }
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
-    use std::any::TypeId;
+    use std::any::{Any, TypeId};
+
+    use crate::callback::Callback;
 
     use super::AccessorRegistry;
 
     #[test]
     fn test_accessor_regitry() {
+        #[derive(Default)]
         struct State {
             foo: Foo,
             bar: Bar,
         }
-
+        #[derive(Default)]
         struct Foo {
             baz: Baz,
         }
-
+        #[derive(Default)]
         struct Bar {
             x: f32,
         }
-
+        #[derive(Default)]
         struct Baz {
             y: f32,
         }
@@ -165,22 +181,27 @@ mod tests {
         registry.register_accessor(|state: &mut State| &mut state.bar);
         registry.register_accessor(|state: &mut Foo| &mut state.baz);
 
-        let mut state = State {
-            foo: Foo {
-                baz: Baz { y: 1.0 },
-            },
-            bar: Bar { x: 1.0 },
-        };
+        let mut state = State::default();
 
         let bar_dyn = registry.access(&mut state, TypeId::of::<State>(), TypeId::of::<Bar>());
         let Bar { ref mut x } = bar_dyn.downcast_mut().unwrap();
         *x = 42.0;
 
-        let baz_dyn = registry.access(&mut state, TypeId::of::<State>(), TypeId::of::<Baz>());
+        let baz_dyn: &mut dyn Any =
+            registry.access(&mut state, TypeId::of::<State>(), TypeId::of::<Baz>());
         let Baz { ref mut y } = baz_dyn.downcast_mut().unwrap();
         *y = 9.99;
 
         assert_eq!(state.bar.x, 42.0);
         assert_eq!(state.foo.baz.y, 9.99);
+
+        let cb = Callback::from_fn(|bar: &mut Bar| { bar.x = 123.4 });
+        registry.invoke_callback(&mut state, cb);
+
+        let cb = Callback::from_fn(|baz: &mut Baz| { baz.y = 432.1 });
+        registry.invoke_callback(&mut state, cb);
+
+        assert_eq!(state.bar.x, 123.4);
+        assert_eq!(state.foo.baz.y, 432.1);
     }
 }
