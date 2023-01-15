@@ -6,6 +6,7 @@ use crate::{
     callback::{AccessorRegistry, Callback},
     input::InputState,
     widget::DynWidget,
+    widget_id::WidgetId,
 };
 
 pub struct Context {
@@ -27,7 +28,10 @@ impl Context {
         }
     }
     pub fn run(&mut self, widget: &mut DynWidget, state: &mut dyn Any) {
-        let mut layout = widget.widget.layout(self, Vec2::new(800.0, 600.0));
+        let mut layout =
+            widget
+                .widget
+                .layout(self, WidgetId::new("__ROOT__"), Vec2::new(800.0, 600.0));
         layout.to_absolute(Vec2::ZERO);
         let events = std::mem::take(&mut self.input_state.ev_buffer);
         for ev in events {

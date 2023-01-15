@@ -6,6 +6,7 @@ use crate::{
     input::{Event, EventStatus},
     layout::{Layout, LayoutHints, SizeHint, SizeHints},
     widget::Widget,
+    widget_id::{IdGen, WidgetId},
 };
 
 #[derive(Builder)]
@@ -69,7 +70,8 @@ impl Spacer {
 }
 
 impl Widget for Spacer {
-    fn layout(&mut self, _ctx: &Context, available: Vec2) -> Layout {
+    fn layout(&mut self, _ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+        let widget_id = parent_id.with("spacer");
         let width = match self.layout_hints.size_hints.width {
             SizeHint::Shrink => self.min_size.x,
             SizeHint::Fill => available.x,
@@ -78,7 +80,7 @@ impl Widget for Spacer {
             SizeHint::Shrink => self.min_size.y,
             SizeHint::Fill => available.y,
         };
-        Layout::leaf(Vec2::new(width, height))
+        Layout::leaf(widget_id, Vec2::new(width, height))
     }
 
     fn draw(&mut self, _ctx: &Context, _layout: &Layout) {

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use base_widgets::{
     box_container::BoxContainer, button::Button, margin_container::MarginContainer, spacer::Spacer,
-    text::Text,
+    text::Text, text_edit::TextEdit,
 };
 use callback::Callback;
 use context::Context;
@@ -20,10 +20,14 @@ use winit::{
     window::WindowBuilder,
 };
 
+use crate::widget_id::IdGen;
+
 extern crate self as guee;
 
 //pub mod epaint_shape_routine;
 pub mod epaint_routine;
+
+pub mod widget_id;
 
 pub mod layout;
 
@@ -44,35 +48,46 @@ pub struct AppState {
 
 fn view(state: &AppState) -> DynWidget {
     MarginContainer::new(
-        BoxContainer::vertical(vec![
-            BoxContainer::vertical(
-                state
-                    .items
-                    .iter()
-                    .map(|it| Text::new(it.clone()).build())
-                    .collect_vec(),
-            )
-            .layout_hints(LayoutHints::fill_horizontal())
-            .cross_align(Align::Center)
-            .build(),
-            Spacer::fill_v(1).build(),
-            BoxContainer::horizontal(vec![
-                Button::with_label("Add!")
-                    .on_click(|state: &mut AppState| {
-                        state.items.push(format!("Potato {}", state.items.len()));
-                    })
-                    .hints(LayoutHints::fill_horizontal())
+        IdGen::key("margin"),
+        BoxContainer::vertical(
+            IdGen::key("vbox"),
+            vec![
+                BoxContainer::vertical(
+                    IdGen::key("items"),
+                    state
+                        .items
+                        .iter()
+                        .map(|it| Text::new(it.clone()).build())
+                        .collect_vec(),
+                )
+                .layout_hints(LayoutHints::fill_horizontal())
+                .cross_align(Align::Center)
+                .build(),
+                Spacer::fill_v(1).build(),
+                TextEdit::new(IdGen::literal("text_input_field"), "Potato".into())
+                    .layout_hints(LayoutHints::fill_horizontal())
+                    .padding(Vec2::new(3.0, 3.0))
                     .build(),
-                Button::with_label("Delete!")
-                    .on_click(|state: &mut AppState| {
-                        state.items.pop();
-                    })
-                    .hints(LayoutHints::fill_horizontal())
-                    .build(),
-            ])
-            .layout_hints(LayoutHints::fill_horizontal())
-            .build(),
-        ])
+                BoxContainer::horizontal(
+                    IdGen::key("buttons"),
+                    vec![
+                    Button::with_label("Add!")
+                        .on_click(|state: &mut AppState| {
+                            state.items.push(format!("Potato {}", state.items.len()));
+                        })
+                        .hints(LayoutHints::fill_horizontal())
+                        .build(),
+                    Button::with_label("Delete!")
+                        .on_click(|state: &mut AppState| {
+                            state.items.pop();
+                        })
+                        .hints(LayoutHints::fill_horizontal())
+                        .build(),
+                ])
+                .layout_hints(LayoutHints::fill_horizontal())
+                .build(),
+            ],
+        )
         .layout_hints(LayoutHints::fill())
         .build(),
     )

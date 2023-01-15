@@ -5,6 +5,7 @@ use crate::{
     input::{Event, EventStatus},
     layout::{Layout, LayoutHints, SizeHint, SizeHints},
     widget::Widget,
+    widget_id::WidgetId,
 };
 use epaint::{Color32, FontId, Fonts, Galley, Pos2, Shape, Stroke, TextShape, Vec2};
 use guee_derives::Builder;
@@ -31,8 +32,11 @@ impl Text {
 }
 
 impl Widget for Text {
-    fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
-        Layout::leaf(self.min_size(ctx, available))
+    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+        Layout::leaf(
+            parent_id.with(&self.contents),
+            self.min_size(ctx, available),
+        )
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {

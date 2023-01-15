@@ -3,6 +3,7 @@ use crate::{
     input::{Event, EventStatus},
     layout::{Align, Axis, AxisDirections, Layout, LayoutHints, SizeHint},
     widget::{DynWidget, Widget},
+    widget_id::{IdGen, WidgetId},
 };
 use epaint::{Pos2, Vec2};
 use guee_derives::Builder;
@@ -10,6 +11,7 @@ use typed_builder::TypedBuilder;
 
 #[derive(Builder)]
 pub struct BoxContainer {
+    id: IdGen,
     axis: Axis,
     contents: Vec<DynWidget>,
     #[builder(default = 3.0)]
@@ -23,20 +25,22 @@ pub struct BoxContainer {
 }
 
 impl BoxContainer {
-    pub fn vertical(contents: Vec<DynWidget>) -> BoxContainer {
-        Self::new(Axis::Vertical, contents)
+    pub fn vertical(id_gen: IdGen, contents: Vec<DynWidget>) -> BoxContainer {
+        Self::new(id_gen, Axis::Vertical, contents)
     }
 
-    pub fn horizontal(contents: Vec<DynWidget>) -> BoxContainer {
-        Self::new(Axis::Horizontal, contents)
+    pub fn horizontal(id_gen: IdGen, contents: Vec<DynWidget>) -> BoxContainer {
+        Self::new(id_gen, Axis::Horizontal, contents)
     }
 }
 
 impl Widget for BoxContainer {
-    fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
+    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+        let widget_id = self.id.resolve(parent_id);
+
         // We do this, so the rest of the code can assume child list is non-empty
         if self.contents.is_empty() {
-            return Layout::leaf(Vec2::ZERO);
+            return Layout::leaf(widget_id, Vec2::ZERO);
         }
 
         let axis = self.axis;
@@ -63,17 +67,8 @@ impl Widget for BoxContainer {
             }
         }
         let total_separation = self.separation * (self.contents.len() - 1) as f32;
-        dbg!(total_separation);
-
         // How much total space elements on the main axis would get to grow
         let wiggle_room = available.main_dir(axis) - (total_shrink_space + total_separation);
-
-        let deb = self.contents.len() == 3;
-        if deb {
-            dbg!(wiggle_room);
-            dbg!(total_shrink_space);
-            dbg!(total_filled_weight);
-        }
 
         let mut main_offset = 0.0;
         let mut children = vec![];
@@ -82,20 +77,11 @@ impl Widget for BoxContainer {
                 SizeHint::Shrink => {
                     axis.new_vec2(available.main_dir(axis) - main_offset, cross_space)
                 }
-                SizeHint::Fill => {
-                    if deb {
-                        dbg!(
-                            wiggle_room
-                                * (ch.widget.layout_hints().weight as f32
-                                    / total_filled_weight as f32)
-                        );
-                    }
-                    axis.new_vec2(
-                        wiggle_room
-                            * (ch.widget.layout_hints().weight as f32 / total_filled_weight as f32),
-                        cross_space,
-                    )
-                }
+                SizeHint::Fill => axis.new_vec2(
+                    wiggle_room
+                        * (ch.widget.layout_hints().weight as f32 / total_filled_weight as f32),
+                    cross_space,
+                ),
             };
 
             let axis_vec = match axis {
@@ -104,7 +90,7 @@ impl Widget for BoxContainer {
             };
             let ch_layout = ch
                 .widget
-                .layout(ctx, c_available)
+                .layout(ctx, widget_id, c_available)
                 .clear_translation()
                 .translated(axis_vec * main_offset);
             main_offset += ch_layout.bounds.size().main_dir(axis) + self.separation;
@@ -153,6 +139,7 @@ impl Widget for BoxContainer {
         }
 
         Layout::with_children(
+            widget_id,
             Vec2::new(
                 cross_space,
                 children
@@ -173,7 +160,7 @@ impl Widget for BoxContainer {
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
         if self.contents.is_empty() {
-            return Vec2::ZERO
+            return Vec2::ZERO;
         }
 
         let axis = self.axis;

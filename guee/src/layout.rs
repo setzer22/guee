@@ -1,10 +1,16 @@
 use epaint::{Pos2, Rect, Vec2};
 
+use crate::widget_id::WidgetId;
+
 pub struct Layout {
     // Bounds of this node. When creating this in a `layout` callback, it is
     // relative to its parent. The engine will convert the bounds to absolute
     // coordinates before feeding it to `draw`.
     pub bounds: Rect,
+    /// The widget id. Uniquely identifies this widget in the state tree. Ids
+    /// are sometimes used by event handling code to track volatile state from
+    /// frame to frame.
+    pub widget_id: WidgetId,
     // Children of this node.
     pub children: Vec<Layout>,
 }
@@ -13,6 +19,27 @@ pub struct Layout {
 pub struct LayoutHints {
     pub size_hints: SizeHints,
     pub weight: u32,
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+pub enum Align {
+    #[default]
+    Start,
+    End,
+    Center,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum SizeHint {
+    #[default]
+    Shrink,
+    Fill,
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct SizeHints {
+    pub width: SizeHint,
+    pub height: SizeHint,
 }
 
 impl Default for LayoutHints {
@@ -56,39 +83,20 @@ impl LayoutHints {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
-pub enum Align {
-    #[default]
-    Start,
-    End,
-    Center,
-}
-
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum SizeHint {
-    #[default]
-    Shrink,
-    Fill,
-}
-
-#[derive(Copy, Clone, Debug, Default)]
-pub struct SizeHints {
-    pub width: SizeHint,
-    pub height: SizeHint,
-}
-
 impl Layout {
-    pub fn with_children(size: Vec2, children: Vec<Layout>) -> Self {
+    pub fn with_children(widget_id: WidgetId, size: Vec2, children: Vec<Layout>) -> Self {
         Self {
             bounds: Rect::from_min_size(Pos2::ZERO, size),
             children,
+            widget_id,
         }
     }
 
-    pub fn leaf(size: Vec2) -> Self {
+    pub fn leaf(widget_id: WidgetId, size: Vec2) -> Self {
         Self {
             bounds: Rect::from_min_size(Pos2::ZERO, size),
             children: vec![],
+            widget_id,
         }
     }
 

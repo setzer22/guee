@@ -6,20 +6,28 @@ use crate::{
     input::{Event, EventStatus},
     layout::{Layout, LayoutHints},
     widget::{DynWidget, Widget},
+    widget_id::{IdGen, WidgetId},
 };
 
 #[derive(Builder)]
 pub struct MarginContainer {
+    id: IdGen,
     #[builder(default)]
     margin: Vec2,
     contents: DynWidget,
 }
 
 impl Widget for MarginContainer {
-    fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
-        let mut content_layout = self.contents.widget.layout(ctx, available - self.margin);
+    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+        let widget_id = self.id.resolve(parent_id);
+
+        let mut content_layout =
+            self.contents
+                .widget
+                .layout(ctx, widget_id, available - self.margin);
         content_layout.translate(self.margin * 0.5);
         Layout::with_children(
+            widget_id,
             content_layout.bounds.size() + self.margin,
             vec![content_layout],
         )

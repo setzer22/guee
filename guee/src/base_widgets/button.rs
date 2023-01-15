@@ -4,6 +4,7 @@ use crate::{
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints, SizeHint},
     widget::{DynWidget, Widget},
+    widget_id::{IdGen, WidgetId},
 };
 use epaint::{Color32, Pos2, RectShape, Rounding, Shape, Stroke, Vec2};
 use guee_derives::Builder;
@@ -12,6 +13,7 @@ use super::text::Text;
 
 #[derive(Builder)]
 pub struct Button {
+    pub id: IdGen,
     #[builder(skip)]
     pub pressed: bool,
     #[builder(skip)]
@@ -27,14 +29,19 @@ pub struct Button {
 
 impl Button {
     pub fn with_label(label: impl Into<String>) -> Self {
-        Button::new(Text::new(label.into()).build())
+        let label = label.into();
+        Button::new(IdGen::key(&label), Text::new(label).build())
     }
 }
 
 impl Widget for Button {
-    fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
+    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+        let widget_id = self.id.resolve(parent_id);
         let padding = self.padding;
-        let mut contents_layout = self.contents.widget.layout(ctx, available - padding);
+        let mut contents_layout = self
+            .contents
+            .widget
+            .layout(ctx, widget_id, available - padding);
 
         let size_hints = self.hints.size_hints;
         let width = match size_hints.width {
@@ -51,7 +58,7 @@ impl Widget for Button {
             (height - contents_layout.bounds.height()) * 0.5,
         ));
 
-        Layout::with_children(Vec2::new(width, height), vec![contents_layout])
+        Layout::with_children(widget_id, Vec2::new(width, height), vec![contents_layout])
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
