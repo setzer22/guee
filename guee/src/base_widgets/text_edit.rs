@@ -5,11 +5,13 @@ use epaint::{
     TextShape, Vec2,
 };
 use guee_derives::Builder;
+use winit::event::VirtualKeyCode;
 
 use crate::{
+    callback::Callback,
     context::Context,
     input::{Event, EventStatus},
-    layout::{Layout, LayoutHints},
+    layout::{Layout, LayoutHints, SizeHint},
     widget::Widget,
     widget_id::{IdGen, WidgetId},
 };
@@ -30,6 +32,10 @@ pub struct TextEdit {
     layout_hints: LayoutHints,
     #[builder(skip)]
     galley: Option<Arc<Galley>>,
+    #[builder(callback)]
+    on_changed: Option<Callback<String>>,
+    #[builder(default = 100.0)]
+    min_width: f32,
 }
 
 #[derive(Default)]
@@ -40,15 +46,28 @@ pub struct TextEditUiState {
 impl Widget for TextEdit {
     fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
         let widget_id = self.id.resolve(parent_id);
-        // Delegate layouting to button, since the two widgets are very similar
-        let mut b = Button::with_label(self.contents.clone())
-            .padding(self.padding)
-            .hints(self.layout_hints);
-        let mut b_layout = b.layout(ctx, widget_id, available);
-        // Undo centering of inner text
-        let text_left = b_layout.children[0].bounds.left();
-        b_layout.children[0].translate_x(-text_left + self.padding.x);
-        b_layout
+        let padding = self.padding;
+
+        let size_hints = self.layout_hints.size_hints;
+        let width = match size_hints.width {
+            SizeHint::Shrink => self.min_width + 2.0 * padding.x,
+            SizeHint::Fill => available.x,
+        };
+
+        let galley = ctx.fonts.layout(
+            self.contents.clone(),
+            FontId::proportional(14.0),
+            Color32::WHITE,
+            width,
+        );
+        self.galley = Some(galley.clone());
+
+        let height = match size_hints.height {
+            SizeHint::Shrink => galley.size().y + 2.0 * padding.y,
+            SizeHint::Fill => available.y,
+        };
+
+        Layout::leaf(widget_id, Vec2::new(width, height))
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
@@ -66,15 +85,9 @@ impl Widget for TextEdit {
             stroke: Stroke::new(2.0, Color32::from_rgb(80, 80, 80)),
         }));
 
-        let text_bounds = layout.children[0].bounds;
-        let galley = ctx.fonts.layout(
-            self.contents.clone(),
-            FontId::proportional(14.0),
-            Color32::WHITE,
-            text_bounds.size().x,
-        );
-        self.galley = Some(galley.clone());
+        let text_bounds = layout.bounds.shrink2(self.padding);
 
+        let galley = self.galley.clone().unwrap();
         ctx.shapes.borrow_mut().push(Shape::Text(TextShape {
             pos: text_bounds.left_top(),
             galley: galley.clone(),
@@ -123,7 +136,18 @@ impl Widget for TextEdit {
         );
 
         match event {
-            Event::MousePressed(_) => {}
+            Event::Text(ch) => {
+                let mut contents = self.contents.clone();
+                contents.push(*ch);
+                ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
+            }
+            Event::KeyPressed(VirtualKeyCode::Back) => {
+                if !self.contents.is_empty() {
+                    let mut contents = self.contents.clone();
+                    contents.drain(self.contents.len() - 1..);
+                    ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
+                }
+            }
             _ => {}
         }
 

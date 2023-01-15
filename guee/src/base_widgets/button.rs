@@ -24,7 +24,7 @@ pub struct Button {
     pub padding: Vec2,
     pub contents: DynWidget,
     #[builder(callback)]
-    pub on_click: Option<Callback>,
+    pub on_click: Option<Callback<()>>,
 }
 
 impl Button {
@@ -100,7 +100,7 @@ impl Widget for Button {
             match event {
                 Event::MousePressed(MouseButton::Primary) => {
                     if let Some(on_click) = self.on_click.take() {
-                        ctx.push_callback(on_click)
+                        ctx.dispatch_callback(on_click, ())
                     }
                     self.pressed = true;
                     return EventStatus::Consumed;

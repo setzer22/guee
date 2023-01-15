@@ -1,6 +1,6 @@
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{bracketed, parenthesized, parse::Parse, Expr, Token, Type};
+use syn::{bracketed, parenthesized, parse::Parse, Expr, PathArguments, Token, Type};
 
 #[derive(Default, Debug)]
 struct BuilderFieldAnnotation {
@@ -161,40 +161,44 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
         }
     };
 
-    let setters = optional_fields.iter().map(|opt| {
-        let ident = &opt.ident;
-        let ty = &opt.ty;
-        if opt.skip_setter {
-            quote!()
-        } else if opt.is_callback {
-            let docstring = format!(" Sets the `{}` callback for this `{}`.", ident, s_ident);
-            quote! {
-                #[doc = #docstring]
-                pub fn #ident<F, T>(mut self, f: F) -> Self
-                where
-                    F: FnOnce(&mut T) + 'static,
-                    T: 'static,
-                {
-                    let cb = guee::callback::Callback::from_fn(f);
-                    self.#ident = Some(cb);
-                    self
-                }
-            }
-        } else {
-            let docstring = format!(
-                " Sets the `{}` for this `{}` to a custom value.",
-                ident, s_ident
-            );
+    let setters = optional_fields
+        .iter()
+        .map(|opt| {
+            let ident = &opt.ident;
+            let ty = &opt.ty;
+            if opt.skip_setter {
+                Ok(quote!())
+            } else if opt.is_callback {
+                let docstring = format!(" Sets the `{}` callback for this `{}`.", ident, s_ident);
+                let cb_type = unwrap_callback_type(ident.span(), ty)?;
+                Ok(quote! {
+                    #[doc = #docstring]
+                    pub fn #ident<F, T>(mut self, f: F) -> Self
+                    where
+                        F: FnOnce(&mut T, #cb_type) + 'static,
+                        T: 'static,
+                    {
+                        let cb = guee::callback::Callback::from_fn(f);
+                        self.#ident = Some(cb);
+                        self
+                    }
+                })
+            } else {
+                let docstring = format!(
+                    " Sets the `{}` for this `{}` to a custom value.",
+                    ident, s_ident
+                );
 
-            quote! {
-                #[doc = #docstring]
-                pub fn #ident(mut self, arg: #ty) -> Self {
-                    self.#ident = arg;
-                    self
-                }
+                Ok(quote! {
+                    #[doc = #docstring]
+                    pub fn #ident(mut self, arg: #ty) -> Self {
+                        self.#ident = arg;
+                        self
+                    }
+                })
             }
-        }
-    });
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
 
     Ok(quote! {
         impl #s_ident {
@@ -205,4 +209,32 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
             }
         }
     })
+}
+pub fn unwrap_callback_type(span: Span, ty: &Type) -> syn::Result<&Type> {
+    let inner = unwrap_typ(ty, span, "Option")?;
+    let inner = unwrap_typ(inner, span, "Callback")?;
+    Ok(inner)
+}
+
+// Given a generic type with a single argument like Option<T>, returns a Type
+// with the inner T
+pub fn unwrap_typ<'a>(typ: &'a Type, span: Span, expected: &str) -> syn::Result<&'a Type> {
+    if let Type::Path(typepath) = typ {
+        if let Some(seg) = typepath.path.segments.first() {
+            if seg.ident == expected {
+                if let PathArguments::AngleBracketed(bracketed) = &seg.arguments {
+                    if let Some(syn::GenericArgument::Type(t)) = bracketed.args.iter().next() {
+                        return Ok(t);
+                    }
+                }
+            }
+        }
+    }
+    Err(syn::Error::new(
+        span,
+        format!(
+            "Expected {expected}<_>, found {} instead",
+            typ.to_token_stream().to_string()
+        ),
+    ))
 }

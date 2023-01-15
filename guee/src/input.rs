@@ -1,5 +1,5 @@
 use epaint::{ahash::HashMap, Pos2};
-use winit::event::WindowEvent;
+use winit::event::{ElementState, VirtualKeyCode, WindowEvent};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MouseButton {
@@ -14,6 +14,9 @@ pub enum Event {
     MousePressed(MouseButton),
     MouseReleased(MouseButton),
     MouseMoved(Pos2),
+    Text(char),
+    KeyPressed(VirtualKeyCode),
+    KeyReleased(VirtualKeyCode),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -51,17 +54,42 @@ impl InputState {
                 };
                 let entry = self.mouse_state.button_state.entry(button).or_default();
                 match state {
-                    winit::event::ElementState::Pressed => {
+                    ElementState::Pressed => {
                         self.ev_buffer.push(Event::MousePressed(button));
                         *entry = true;
                     }
-                    winit::event::ElementState::Released => {
+                    ElementState::Released => {
                         self.ev_buffer.push(Event::MouseReleased(button));
                         *entry = false;
                     }
                 }
             }
+            WindowEvent::KeyboardInput { input, .. } => {
+                if let Some(keycode) = input.virtual_keycode {
+                    match input.state {
+                        ElementState::Pressed => self.ev_buffer.push(Event::KeyPressed(keycode)),
+                        ElementState::Released => self.ev_buffer.push(Event::KeyReleased(keycode)),
+                    }
+                }
+            }
+            WindowEvent::ReceivedCharacter(ch) => {
+                if is_printable_char(*ch) {
+                    self.ev_buffer.push(Event::Text(*ch));
+                }
+            }
             _ => (),
         }
     }
+}
+
+/// Winit sends special keys (backspace, delete, F1, …) as characters.
+/// Ignore those.
+/// We also ignore '\r', '\n', '\t'.
+/// Newlines are handled by the `Key::Enter` event.
+fn is_printable_char(chr: char) -> bool {
+    let is_in_private_use_area = '\u{e000}' <= chr && chr <= '\u{f8ff}'
+        || '\u{f0000}' <= chr && chr <= '\u{ffffd}'
+        || '\u{100000}' <= chr && chr <= '\u{10fffd}';
+
+    !is_in_private_use_area && !chr.is_ascii_control()
 }

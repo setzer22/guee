@@ -3,10 +3,11 @@ use std::{any::Any, cell::RefCell};
 use epaint::{text::FontDefinitions, Fonts, Shape, Vec2};
 
 use crate::{
-    callback::{AccessorRegistry, Callback},
+    callback::{AccessorRegistry, Callback, CallbackDispatch},
     input::InputState,
+    memory::Memory,
     widget::DynWidget,
-    widget_id::WidgetId, memory::Memory,
+    widget_id::WidgetId,
 };
 
 pub struct Context {
@@ -14,7 +15,7 @@ pub struct Context {
     pub shapes: RefCell<Vec<Shape>>,
     pub input_state: InputState,
     pub accessor_registry: AccessorRegistry,
-    pub callbacks: RefCell<Vec<Callback>>,
+    pub dispatched_callbacks: RefCell<Vec<CallbackDispatch>>,
     pub memory: Memory,
 }
 
@@ -24,7 +25,7 @@ impl Context {
             fonts: Fonts::new(1.0, 1024, FontDefinitions::default()),
             shapes: Default::default(),
             input_state: Default::default(),
-            callbacks: Default::default(),
+            dispatched_callbacks: Default::default(),
             accessor_registry: Default::default(),
             memory: Default::default(),
         }
@@ -43,13 +44,15 @@ impl Context {
                 .on_event(self, &layout, self.input_state.mouse_state.position, &ev);
         }
         widget.widget.draw(self, &layout);
-        for callback in self.callbacks.borrow_mut().drain(..) {
+        for callback in self.dispatched_callbacks.borrow_mut().drain(..) {
             self.accessor_registry.invoke_callback(state, callback);
         }
     }
 
-    pub fn push_callback(&self, c: Callback) {
-        self.callbacks.borrow_mut().push(c)
+    pub fn dispatch_callback<P: 'static>(&self, c: Callback<P>, payload: P) {
+        self.dispatched_callbacks
+            .borrow_mut()
+            .push(CallbackDispatch::new(c, payload))
     }
 }
 

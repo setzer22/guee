@@ -46,6 +46,7 @@ pub mod memory;
 #[derive(Default)]
 pub struct AppState {
     items: Vec<String>,
+    wip_item_name: String,
 }
 
 fn view(state: &AppState) -> DynWidget {
@@ -66,26 +67,35 @@ fn view(state: &AppState) -> DynWidget {
                 .cross_align(Align::Center)
                 .build(),
                 Spacer::fill_v(1).build(),
-                TextEdit::new(IdGen::literal("text_input_field"), "Potato".into())
-                    .layout_hints(LayoutHints::fill_horizontal())
-                    .padding(Vec2::new(3.0, 3.0))
-                    .build(),
+                TextEdit::new(
+                    IdGen::literal("text_input_field"),
+                    state.wip_item_name.clone(),
+                )
+                .layout_hints(LayoutHints::fill_horizontal())
+                .padding(Vec2::new(3.0, 3.0))
+                .on_changed(|state: &mut AppState, new| {
+                    state.wip_item_name = new;
+                })
+                .build(),
                 BoxContainer::horizontal(
                     IdGen::key("buttons"),
                     vec![
-                    Button::with_label("Add!")
-                        .on_click(|state: &mut AppState| {
-                            state.items.push(format!("Potato {}", state.items.len()));
-                        })
-                        .hints(LayoutHints::fill_horizontal())
-                        .build(),
-                    Button::with_label("Delete!")
-                        .on_click(|state: &mut AppState| {
-                            state.items.pop();
-                        })
-                        .hints(LayoutHints::fill_horizontal())
-                        .build(),
-                ])
+                        Button::with_label("Add!")
+                            .on_click(|state: &mut AppState, _| {
+                                if !state.wip_item_name.is_empty() {
+                                    state.items.push(std::mem::take(&mut state.wip_item_name));
+                                }
+                            })
+                            .hints(LayoutHints::fill_horizontal())
+                            .build(),
+                        Button::with_label("Delete!")
+                            .on_click(|state: &mut AppState, _| {
+                                state.items.pop();
+                            })
+                            .hints(LayoutHints::fill_horizontal())
+                            .build(),
+                    ],
+                )
                 .layout_hints(LayoutHints::fill_horizontal())
                 .build(),
             ],
