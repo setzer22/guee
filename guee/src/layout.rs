@@ -24,6 +24,38 @@ impl Default for LayoutHints {
     }
 }
 
+impl LayoutHints {
+    pub fn fill() -> Self {
+        LayoutHints {
+            size_hints: SizeHints {
+                width: SizeHint::Fill,
+                height: SizeHint::Fill,
+            },
+            weight: 1,
+        }
+    }
+
+    pub fn fill_vertical() -> Self {
+        LayoutHints {
+            size_hints: SizeHints {
+                width: SizeHint::Shrink,
+                height: SizeHint::Fill,
+            },
+            weight: 1,
+        }
+    }
+
+    pub fn fill_horizontal() -> Self {
+        LayoutHints {
+            size_hints: SizeHints {
+                width: SizeHint::Fill,
+                height: SizeHint::Shrink,
+            },
+            weight: 1,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default)]
 pub enum Align {
     #[default]

@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use base_widgets::{box_container::BoxContainer, button::Button, text::Text};
+use base_widgets::{
+    box_container::BoxContainer, button::Button, margin_container::MarginContainer, spacer::Spacer,
+    text::Text,
+};
 use callback::Callback;
 use context::Context;
 use egui_wgpu::{winit::Painter, WgpuConfiguration};
@@ -16,6 +19,8 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
+extern crate self as guee;
 
 //pub mod epaint_shape_routine;
 pub mod epaint_routine;
@@ -38,40 +43,41 @@ pub struct AppState {
 }
 
 fn view(state: &AppState) -> DynWidget {
-    BoxContainer::vertical()
-        .contents(vec![
-            BoxContainer::vertical()
-                .contents(
-                    state
-                        .items
-                        .iter()
-                        .map(|it| Text::builder().contents(it.clone()).build().to_dyn())
-                        .collect_vec(),
-                )
-                .build()
-                .to_dyn(),
-            BoxContainer::horizontal()
-                .contents(vec![
-                    Button::builder()
-                        .contents(Text::builder().contents("Add!".into()).build().to_dyn())
-                        .build()
-                        .on_click(|state: &mut AppState| {
-                            state.items.push(format!("Potato {}", state.items.len()));
-                        })
-                        .to_dyn(),
-                    Button::builder()
-                        .contents(Text::builder().contents("Delete!".into()).build().to_dyn())
-                        .build()
-                        .on_click(|state: &mut AppState| {
-                            state.items.pop();
-                        })
-                        .to_dyn(),
-                ])
-                .build()
-                .to_dyn(),
+    MarginContainer::new(
+        BoxContainer::vertical(vec![
+            BoxContainer::vertical(
+                state
+                    .items
+                    .iter()
+                    .map(|it| Text::new(it.clone()).build())
+                    .collect_vec(),
+            )
+            .layout_hints(LayoutHints::fill_horizontal())
+            .cross_align(Align::Center)
+            .build(),
+            Spacer::fill_v(1).build(),
+            BoxContainer::horizontal(vec![
+                Button::with_label("Add!")
+                    .on_click(|state: &mut AppState| {
+                        state.items.push(format!("Potato {}", state.items.len()));
+                    })
+                    .hints(LayoutHints::fill_horizontal())
+                    .build(),
+                Button::with_label("Delete!")
+                    .on_click(|state: &mut AppState| {
+                        state.items.pop();
+                    })
+                    .hints(LayoutHints::fill_horizontal())
+                    .build(),
+            ])
+            .layout_hints(LayoutHints::fill_horizontal())
+            .build(),
         ])
-        .build()
-        .to_dyn()
+        .layout_hints(LayoutHints::fill())
+        .build(),
+    )
+    .margin(Vec2::new(50.0, 50.0))
+    .build()
 }
 
 fn main() {

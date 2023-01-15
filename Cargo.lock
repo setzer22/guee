@@ -650,6 +650,7 @@ dependencies = [
  "env_logger",
  "epaint",
  "glam",
+ "guee_derives",
  "higher-order-closure",
  "itertools",
  "pollster",
@@ -657,6 +658,15 @@ dependencies = [
  "typed-builder",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "guee_derives"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

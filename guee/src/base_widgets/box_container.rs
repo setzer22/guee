@@ -5,9 +5,10 @@ use crate::{
     widget::{DynWidget, Widget},
 };
 use epaint::{Pos2, Vec2};
+use guee_derives::Builder;
 use typed_builder::TypedBuilder;
 
-#[derive(TypedBuilder)]
+#[derive(Builder)]
 pub struct BoxContainer {
     axis: Axis,
     contents: Vec<DynWidget>,
@@ -22,12 +23,12 @@ pub struct BoxContainer {
 }
 
 impl BoxContainer {
-    pub fn vertical() -> BoxContainerBuilder<((Axis,), (), (), (), (), ())> {
-        Self::builder().axis(Axis::Vertical)
+    pub fn vertical(contents: Vec<DynWidget>) -> BoxContainer {
+        Self::new(Axis::Vertical, contents)
     }
 
-    pub fn horizontal() -> BoxContainerBuilder<((Axis,), (), (), (), (), ())> {
-        Self::builder().axis(Axis::Horizontal)
+    pub fn horizontal(contents: Vec<DynWidget>) -> BoxContainer {
+        Self::new(Axis::Horizontal, contents)
     }
 }
 
@@ -35,7 +36,7 @@ impl Widget for BoxContainer {
     fn layout(&mut self, ctx: &Context, available: Vec2) -> Layout {
         // We do this, so the rest of the code can assume child list is non-empty
         if self.contents.is_empty() {
-            return Layout::leaf(Vec2::ZERO)
+            return Layout::leaf(Vec2::ZERO);
         }
 
         let axis = self.axis;
@@ -51,8 +52,8 @@ impl Widget for BoxContainer {
         for c in &mut self.contents {
             match c.widget.layout_hints().size_hints.main_dir(axis) {
                 SizeHint::Shrink => {
-                    // TODO: This available here is not correct, some things
-                    // like text wrapping may fail to compute.
+                    // TODO: FIXME: This available here is not correct, some
+                    // things like text wrapping may fail to compute.
                     total_shrink_space += c.widget.min_size(ctx, available).main_dir(axis);
                 }
                 SizeHint::Fill => {
@@ -62,9 +63,17 @@ impl Widget for BoxContainer {
             }
         }
         let total_separation = self.separation * (self.contents.len() - 1) as f32;
+        dbg!(total_separation);
 
         // How much total space elements on the main axis would get to grow
         let wiggle_room = available.main_dir(axis) - (total_shrink_space + total_separation);
+
+        let deb = self.contents.len() == 3;
+        if deb {
+            dbg!(wiggle_room);
+            dbg!(total_shrink_space);
+            dbg!(total_filled_weight);
+        }
 
         let mut main_offset = 0.0;
         let mut children = vec![];
@@ -73,11 +82,20 @@ impl Widget for BoxContainer {
                 SizeHint::Shrink => {
                     axis.new_vec2(available.main_dir(axis) - main_offset, cross_space)
                 }
-                SizeHint::Fill => axis.new_vec2(
-                    wiggle_room
-                        * (ch.widget.layout_hints().weight as f32 / total_filled_weight as f32),
-                    cross_space,
-                ),
+                SizeHint::Fill => {
+                    if deb {
+                        dbg!(
+                            wiggle_room
+                                * (ch.widget.layout_hints().weight as f32
+                                    / total_filled_weight as f32)
+                        );
+                    }
+                    axis.new_vec2(
+                        wiggle_room
+                            * (ch.widget.layout_hints().weight as f32 / total_filled_weight as f32),
+                        cross_space,
+                    )
+                }
             };
 
             let axis_vec = match axis {
@@ -154,6 +172,10 @@ impl Widget for BoxContainer {
     }
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
+        if self.contents.is_empty() {
+            return Vec2::ZERO
+        }
+
         let axis = self.axis;
         let mut size_main = 0.0;
         let mut size_cross = 0.0;
@@ -167,10 +189,9 @@ impl Widget for BoxContainer {
             size_main += s.main_dir(axis);
         }
 
-        match axis {
-            Axis::Vertical => Vec2::new(size_cross, size_main),
-            Axis::Horizontal => Vec2::new(size_main, size_cross),
-        }
+        let total_separation = self.separation * (self.contents.len() - 1) as f32;
+
+        axis.new_vec2(size_main + total_separation, size_cross)
     }
 
     fn layout_hints(&self) -> LayoutHints {

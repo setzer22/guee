@@ -6,21 +6,29 @@ use crate::{
     widget::{DynWidget, Widget},
 };
 use epaint::{Color32, Pos2, RectShape, Rounding, Shape, Stroke, Vec2};
-use typed_builder::TypedBuilder;
+use guee_derives::Builder;
 
-#[derive(TypedBuilder)]
+use super::text::Text;
+
+#[derive(Builder)]
 pub struct Button {
-    #[builder(default, setter(skip))]
+    #[builder(skip)]
     pub pressed: bool,
-    #[builder(default, setter(skip))]
+    #[builder(skip)]
     pub hovered: bool,
     #[builder(default)]
     pub hints: LayoutHints,
     #[builder(default = Vec2::new(10.0, 10.0))]
     pub padding: Vec2,
     pub contents: DynWidget,
-    #[builder(default, setter(skip))]
+    #[builder(callback)]
     pub on_click: Option<Callback>,
+}
+
+impl Button {
+    pub fn with_label(label: impl Into<String>) -> Self {
+        Button::new(Text::new(label.into()).build())
+    }
 }
 
 impl Widget for Button {
@@ -73,13 +81,18 @@ impl Widget for Button {
         self.hints
     }
 
-    fn on_event(&mut self, ctx: &Context, layout: &Layout, cursor_position: Pos2, event: &Event) -> EventStatus {
+    fn on_event(
+        &mut self,
+        ctx: &Context,
+        layout: &Layout,
+        cursor_position: Pos2,
+        event: &Event,
+    ) -> EventStatus {
         if layout.bounds.contains(cursor_position) {
             self.hovered = true;
             match event {
                 Event::MousePressed(MouseButton::Primary) => {
                     if let Some(on_click) = self.on_click.take() {
-                        dbg!("on_click!");
                         ctx.push_callback(on_click)
                     }
                     self.pressed = true;
@@ -90,12 +103,5 @@ impl Widget for Button {
         }
 
         EventStatus::Ignored
-    }
-}
-
-impl Button {
-    pub fn on_click<T: 'static>(mut self, f: impl FnOnce(&mut T) + 'static) -> Self {
-        self.on_click = Some(Callback::from_fn(f));
-        self
     }
 }

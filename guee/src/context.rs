@@ -2,12 +2,17 @@ use std::{any::Any, cell::RefCell};
 
 use epaint::{text::FontDefinitions, Fonts, Shape, Vec2};
 
-use crate::{callback::Callback, input::InputState, widget::DynWidget};
+use crate::{
+    callback::{AccessorRegistry, Callback},
+    input::InputState,
+    widget::DynWidget,
+};
 
 pub struct Context {
     pub fonts: Fonts,
     pub shapes: RefCell<Vec<Shape>>,
     pub input_state: InputState,
+    pub accessor_registry: AccessorRegistry,
     pub callbacks: RefCell<Vec<Callback>>,
 }
 
@@ -18,6 +23,7 @@ impl Context {
             shapes: Default::default(),
             input_state: Default::default(),
             callbacks: Default::default(),
+            accessor_registry: Default::default(),
         }
     }
     pub fn run(&mut self, widget: &mut DynWidget, state: &mut dyn Any) {
@@ -32,12 +38,17 @@ impl Context {
         }
         widget.widget.draw(self, &layout);
         for callback in self.callbacks.borrow_mut().drain(..) {
-            dbg!("callback");
-            callback.call(state);
+            self.accessor_registry.invoke_callback(state, callback);
         }
     }
 
     pub fn push_callback(&self, c: Callback) {
         self.callbacks.borrow_mut().push(c)
+    }
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
     }
 }
