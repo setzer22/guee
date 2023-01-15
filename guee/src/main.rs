@@ -41,6 +41,8 @@ pub mod base_widgets;
 
 pub mod callback;
 
+pub mod memory;
+
 #[derive(Default)]
 pub struct AppState {
     items: Vec<String>,

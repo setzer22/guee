@@ -6,7 +6,7 @@ use crate::{
     callback::{AccessorRegistry, Callback},
     input::InputState,
     widget::DynWidget,
-    widget_id::WidgetId,
+    widget_id::WidgetId, memory::Memory,
 };
 
 pub struct Context {
@@ -15,6 +15,7 @@ pub struct Context {
     pub input_state: InputState,
     pub accessor_registry: AccessorRegistry,
     pub callbacks: RefCell<Vec<Callback>>,
+    pub memory: Memory,
 }
 
 impl Context {
@@ -25,6 +26,7 @@ impl Context {
             input_state: Default::default(),
             callbacks: Default::default(),
             accessor_registry: Default::default(),
+            memory: Default::default(),
         }
     }
     pub fn run(&mut self, widget: &mut DynWidget, state: &mut dyn Any) {

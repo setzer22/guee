@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use epaint::{Color32, FontId, Galley, Pos2, RectShape, Rounding, Shape, Stroke, TextShape, Vec2};
+use epaint::{
+    text::cursor::Cursor, Color32, FontId, Galley, Pos2, RectShape, Rounding, Shape, Stroke,
+    TextShape, Vec2,
+};
 use guee_derives::Builder;
 
 use crate::{
@@ -11,7 +14,11 @@ use crate::{
     widget_id::{IdGen, WidgetId},
 };
 
+use self::text_buffer::TextBuffer;
+
 use super::button::Button;
+
+pub mod text_buffer;
 
 #[derive(Builder)]
 pub struct TextEdit {
@@ -23,6 +30,11 @@ pub struct TextEdit {
     layout_hints: LayoutHints,
     #[builder(skip)]
     galley: Option<Arc<Galley>>,
+}
+
+#[derive(Default)]
+pub struct TextEditUiState {
+    cursor: Cursor,
 }
 
 impl Widget for TextEdit {
@@ -40,6 +52,13 @@ impl Widget for TextEdit {
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
+        let ui_state = ctx.memory.get_mut_or(
+            layout.widget_id,
+            TextEditUiState {
+                cursor: Cursor::default(),
+            },
+        );
+
         ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
             rect: layout.bounds,
             rounding: Rounding::same(1.0),
@@ -54,13 +73,27 @@ impl Widget for TextEdit {
             Color32::WHITE,
             text_bounds.size().x,
         );
+        self.galley = Some(galley.clone());
 
         ctx.shapes.borrow_mut().push(Shape::Text(TextShape {
             pos: text_bounds.left_top(),
-            galley,
+            galley: galley.clone(),
             underline: Stroke::NONE,
             override_text_color: None,
             angle: 0.0,
+        }));
+
+        let cursor = galley.cursor_end_of_row(&ui_state.cursor);
+
+        let cursor_rect = galley
+            .pos_from_cursor(&cursor)
+            .expand2(Vec2::new(1.0, 0.0))
+            .translate(text_bounds.left_top().to_vec2());
+        ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
+            rect: cursor_rect,
+            rounding: Rounding::none(),
+            fill: Color32::WHITE,
+            stroke: Stroke::NONE,
         }));
     }
 
@@ -82,6 +115,18 @@ impl Widget for TextEdit {
         cursor_position: Pos2,
         event: &Event,
     ) -> EventStatus {
+        let ui_state = ctx.memory.get_mut_or(
+            layout.widget_id,
+            TextEditUiState {
+                cursor: Cursor::default(),
+            },
+        );
+
+        match event {
+            Event::MousePressed(_) => {}
+            _ => {}
+        }
+
         EventStatus::Ignored
     }
 }
