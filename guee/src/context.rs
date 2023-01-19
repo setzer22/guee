@@ -7,7 +7,7 @@ use crate::{
     input::InputState,
     memory::Memory,
     widget::DynWidget,
-    widget_id::WidgetId,
+    widget_id::{self, WidgetId},
 };
 
 pub struct Context {
@@ -17,6 +17,7 @@ pub struct Context {
     pub accessor_registry: AccessorRegistry,
     pub dispatched_callbacks: RefCell<Vec<CallbackDispatch>>,
     pub memory: Memory,
+    pub focus: RefCell<Option<WidgetId>>,
 }
 
 impl Context {
@@ -28,6 +29,7 @@ impl Context {
             dispatched_callbacks: Default::default(),
             accessor_registry: Default::default(),
             memory: Default::default(),
+            focus: Default::default(),
         }
     }
     pub fn run(&mut self, widget: &mut DynWidget, state: &mut dyn Any) {
@@ -53,6 +55,18 @@ impl Context {
         self.dispatched_callbacks
             .borrow_mut()
             .push(CallbackDispatch::new(c, payload))
+    }
+
+    pub fn request_focus(&self, widget_id: WidgetId) {
+        *self.focus.borrow_mut() = Some(widget_id);
+    }
+
+    pub fn get_focus(&self) -> Option<WidgetId> {
+        *self.focus.borrow()
+    }
+
+    pub fn is_focused(&self, widget_id: WidgetId) -> bool {
+        self.focus.borrow().map(|x| widget_id == x).unwrap_or(false)
     }
 }
 

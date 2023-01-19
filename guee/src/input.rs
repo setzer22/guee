@@ -73,6 +73,14 @@ impl InputState {
                 }
             }
             WindowEvent::ReceivedCharacter(ch) => {
+                // WIP: This is getting very complex very fast. Would it make
+                // sense to bring egui's input management code here? At the very
+                // least, their egui integration code in egui-winit looks like
+                // something to take inspiration from.
+                //
+                // WIP2: There's also an issue with on_event. It currently gets
+                // called once for each event, whereas it would be better if
+                // it's called with all events at the same time.
                 if is_printable_char(*ch) {
                     self.ev_buffer.push(Event::Text(*ch));
                 }

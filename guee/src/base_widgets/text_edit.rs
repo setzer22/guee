@@ -10,7 +10,7 @@ use winit::event::VirtualKeyCode;
 use crate::{
     callback::Callback,
     context::Context,
-    input::{Event, EventStatus},
+    input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints, SizeHint},
     widget::Widget,
     widget_id::{IdGen, WidgetId},
@@ -71,12 +71,10 @@ impl Widget for TextEdit {
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
-        let ui_state = ctx.memory.get_mut_or(
-            layout.widget_id,
-            TextEditUiState {
-                cursor: Cursor::default(),
-            },
-        );
+        let ui_state = ctx
+            .memory
+            .get_mut_or(layout.widget_id, TextEditUiState::default());
+        let focused = ctx.is_focused(layout.widget_id);
 
         ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
             rect: layout.bounds,
@@ -96,18 +94,19 @@ impl Widget for TextEdit {
             angle: 0.0,
         }));
 
-        let cursor = galley.cursor_end_of_row(&ui_state.cursor);
-
-        let cursor_rect = galley
-            .pos_from_cursor(&cursor)
-            .expand2(Vec2::new(1.0, 0.0))
-            .translate(text_bounds.left_top().to_vec2());
-        ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
-            rect: cursor_rect,
-            rounding: Rounding::none(),
-            fill: Color32::WHITE,
-            stroke: Stroke::NONE,
-        }));
+        if focused {
+            let cursor = galley.cursor_end_of_row(&ui_state.cursor);
+            let cursor_rect = galley
+                .pos_from_cursor(&cursor)
+                .expand2(Vec2::new(1.0, 0.0))
+                .translate(text_bounds.left_top().to_vec2());
+            ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
+                rect: cursor_rect,
+                rounding: Rounding::none(),
+                fill: Color32::WHITE,
+                stroke: Stroke::NONE,
+            }));
+        }
     }
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
@@ -128,20 +127,24 @@ impl Widget for TextEdit {
         cursor_position: Pos2,
         event: &Event,
     ) -> EventStatus {
-        let ui_state = ctx.memory.get_mut_or(
-            layout.widget_id,
-            TextEditUiState {
-                cursor: Cursor::default(),
-            },
-        );
+        let mut ui_state = ctx
+            .memory
+            .get_mut_or(layout.widget_id, TextEditUiState::default());
+        let is_focused = ctx.is_focused(layout.widget_id);
+        let galley = self.galley.as_ref().unwrap();
 
         match event {
-            Event::Text(ch) => {
+            Event::MousePressed(MouseButton::Primary) => {
+                if layout.bounds.contains(cursor_position) {
+                    ctx.request_focus(layout.widget_id);
+                }
+            }
+            Event::Text(ch) if is_focused => {
                 let mut contents = self.contents.clone();
                 contents.push(*ch);
                 ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
             }
-            Event::KeyPressed(VirtualKeyCode::Back) => {
+            Event::KeyPressed(VirtualKeyCode::Back) if is_focused => {
                 if !self.contents.is_empty() {
                     let mut contents = self.contents.clone();
                     contents.drain(self.contents.len() - 1..);
