@@ -93,19 +93,21 @@ impl Widget for Button {
         ctx: &Context,
         layout: &Layout,
         cursor_position: Pos2,
-        event: &Event,
+        events: &[Event],
     ) -> EventStatus {
         if layout.bounds.contains(cursor_position) {
             self.hovered = true;
-            match event {
-                Event::MousePressed(MouseButton::Primary) => {
-                    if let Some(on_click) = self.on_click.take() {
-                        ctx.dispatch_callback(on_click, ())
+            for event in events {
+                match event {
+                    Event::MousePressed(MouseButton::Primary) => {
+                        if let Some(on_click) = self.on_click.take() {
+                            ctx.dispatch_callback(on_click, ())
+                        }
+                        self.pressed = true;
+                        return EventStatus::Consumed;
                     }
-                    self.pressed = true;
-                    return EventStatus::Consumed;
+                    _ => {}
                 }
-                _ => {}
             }
         }
 

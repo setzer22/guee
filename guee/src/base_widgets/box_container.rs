@@ -190,10 +190,11 @@ impl Widget for BoxContainer {
         ctx: &Context,
         layout: &Layout,
         cursor_position: Pos2,
-        event: &Event,
+        events: &[Event],
     ) -> EventStatus {
         for (ch, ch_layout) in self.contents.iter_mut().zip(layout.children.iter()) {
-            if ch.widget.on_event(ctx, ch_layout, cursor_position, event) == EventStatus::Consumed {
+            if ch.widget.on_event(ctx, ch_layout, cursor_position, events) == EventStatus::Consumed
+            {
                 return EventStatus::Consumed;
             }
         }

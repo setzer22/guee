@@ -125,7 +125,7 @@ impl Widget for TextEdit {
         ctx: &Context,
         layout: &Layout,
         cursor_position: Pos2,
-        event: &Event,
+        events: &[Event],
     ) -> EventStatus {
         let mut ui_state = ctx
             .memory
@@ -133,25 +133,27 @@ impl Widget for TextEdit {
         let is_focused = ctx.is_focused(layout.widget_id);
         let galley = self.galley.as_ref().unwrap();
 
-        match event {
-            Event::MousePressed(MouseButton::Primary) => {
-                if layout.bounds.contains(cursor_position) {
-                    ctx.request_focus(layout.widget_id);
+        for event in events {
+            match event {
+                Event::MousePressed(MouseButton::Primary) => {
+                    if layout.bounds.contains(cursor_position) {
+                        ctx.request_focus(layout.widget_id);
+                    }
                 }
-            }
-            Event::Text(ch) if is_focused => {
-                let mut contents = self.contents.clone();
-                contents.push(*ch);
-                ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
-            }
-            Event::KeyPressed(VirtualKeyCode::Back) if is_focused => {
-                if !self.contents.is_empty() {
+                Event::Text(ch) if is_focused => {
                     let mut contents = self.contents.clone();
-                    contents.drain(self.contents.len() - 1..);
+                    contents.push(*ch);
                     ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
                 }
+                Event::KeyPressed(VirtualKeyCode::Back) if is_focused => {
+                    if !self.contents.is_empty() {
+                        let mut contents = self.contents.clone();
+                        contents.drain(self.contents.len() - 1..);
+                        ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
+                    }
+                }
+                _ => {}
             }
-            _ => {}
         }
 
         EventStatus::Ignored

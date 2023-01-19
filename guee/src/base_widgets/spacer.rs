@@ -100,7 +100,7 @@ impl Widget for Spacer {
         _ctx: &Context,
         _layout: &Layout,
         _cursor_position: Pos2,
-        _event: &Event,
+        _event: &[Event],
     ) -> EventStatus {
         EventStatus::Ignored
     }

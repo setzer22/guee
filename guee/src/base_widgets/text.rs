@@ -73,7 +73,7 @@ impl Widget for Text {
         ctx: &Context,
         layout: &Layout,
         cursor_position: Pos2,
-        event: &Event,
+        events: &[Event],
     ) -> EventStatus {
         EventStatus::Ignored
     }

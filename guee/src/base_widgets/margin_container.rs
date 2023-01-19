@@ -50,10 +50,10 @@ impl Widget for MarginContainer {
         ctx: &Context,
         layout: &Layout,
         cursor_position: Pos2,
-        event: &Event,
+        events: &[Event],
     ) -> EventStatus {
         self.contents
             .widget
-            .on_event(ctx, &layout.children[0], cursor_position, event)
+            .on_event(ctx, &layout.children[0], cursor_position, events)
     }
 }

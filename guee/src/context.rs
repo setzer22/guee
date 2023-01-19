@@ -7,7 +7,7 @@ use crate::{
     input::InputState,
     memory::Memory,
     widget::DynWidget,
-    widget_id::{self, WidgetId},
+    widget_id::WidgetId,
 };
 
 pub struct Context {
@@ -39,12 +39,15 @@ impl Context {
                 .layout(self, WidgetId::new("__ROOT__"), Vec2::new(800.0, 600.0));
         layout.to_absolute(Vec2::ZERO);
         let events = std::mem::take(&mut self.input_state.ev_buffer);
-        for ev in events {
-            widget
-                .widget
-                // Pass list of events to on_event
-                .on_event(self, &layout, self.input_state.mouse_state.position, &ev);
-        }
+        widget
+            .widget
+            // Pass list of events to on_event
+            .on_event(
+                self,
+                &layout,
+                self.input_state.mouse_state.position,
+                &events,
+            );
         widget.widget.draw(self, &layout);
         for callback in self.dispatched_callbacks.borrow_mut().drain(..) {
             self.accessor_registry.invoke_callback(state, callback);
