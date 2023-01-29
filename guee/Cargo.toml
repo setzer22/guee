@@ -9,8 +9,8 @@ edition = "2021"
 guee_derives = { path = "../guee_derives" }
 slotmap = "1.0.6"
 itertools = "0.10.5"
-epaint = { path = "../../egui/crates/epaint", features = ["bytemuck"] }
-egui-wgpu = { path = "../../egui/crates/egui-wgpu", features = ["winit"] }
+epaint = { git = "https://github.com/emilk/egui", rev = "c58ac86935123415ea3c1531d735e708465267b6", features = ["bytemuck"] }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "c58ac86935123415ea3c1531d735e708465267b6", features = ["winit"] }
 glam = "0.21.2"
 env_logger = { version = "0.9", default-features = false, features = ["termcolor", "atty"] }
 winit = "0.27.2"
