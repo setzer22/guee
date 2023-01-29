@@ -15,6 +15,8 @@ pub struct Text {
     contents: String,
     #[builder(skip)]
     last_galley: Option<Arc<Galley>>,
+    #[builder(default)]
+    color: Color32,
 }
 
 impl Text {
@@ -22,7 +24,7 @@ impl Text {
         let galley = fonts.layout(
             self.contents.clone(),
             FontId::proportional(14.0),
-            Color32::BLACK,
+            self.color,
             wrap_width,
         );
         self.last_galley = Some(galley.clone());
