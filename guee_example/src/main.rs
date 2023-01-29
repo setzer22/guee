@@ -69,10 +69,8 @@ fn view(state: &AppState) -> DynWidget {
 }
 
 fn main() {
-    let mut ctx = Context::new();
-
     let screen_size = Vec2::new(800.0, 600.0);
-    let screen_rect = Rect::from_min_size(Pos2::new(0.0, 0.0), screen_size);
+    let mut ctx = Context::new(screen_size);
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -90,17 +88,7 @@ fn main() {
         match event {
             winit::event::Event::MainEventsCleared => {
                 ctx.run(&mut view(&state), &mut state);
-                let clipped_primitives = epaint::tessellate_shapes(
-                    1.0,
-                    TessellationOptions::default(),
-                    ctx.fonts.font_image_size(),
-                    vec![],
-                    ctx.shapes
-                        .borrow_mut()
-                        .drain(..)
-                        .map(|x| ClippedShape(screen_rect, x))
-                        .collect_vec(),
-                );
+                let clipped_primitives = ctx.tessellate();
 
                 let mut textures_delta = TexturesDelta::default();
                 if let Some(img_delta) = ctx.fonts.font_image_delta() {
@@ -117,6 +105,9 @@ fn main() {
                 match &event {
                     winit::event::WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit;
+                    }
+                    winit::event::WindowEvent::Resized(new_size) => {
+                        painter.on_window_resized(new_size.width, new_size.height);
                     }
                     _ => (),
                 }

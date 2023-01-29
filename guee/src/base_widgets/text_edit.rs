@@ -16,8 +16,6 @@ use crate::{
     widget_id::{IdGen, WidgetId},
 };
 
-use self::text_buffer::TextBuffer;
-
 use super::button::Button;
 
 pub mod text_buffer;
@@ -127,11 +125,11 @@ impl Widget for TextEdit {
         cursor_position: Pos2,
         events: &[Event],
     ) -> EventStatus {
-        let mut ui_state = ctx
+        let mut _ui_state = ctx
             .memory
             .get_mut_or(layout.widget_id, TextEditUiState::default());
         let is_focused = ctx.is_focused(layout.widget_id);
-        let galley = self.galley.as_ref().unwrap();
+        let _galley = self.galley.as_ref().unwrap();
 
         for event in events {
             match event {

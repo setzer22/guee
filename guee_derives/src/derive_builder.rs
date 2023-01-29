@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{bracketed, parenthesized, parse::Parse, Expr, PathArguments, Token, Type};
+use syn::{parenthesized, parse::Parse, Expr, PathArguments, Token, Type};
 
 #[derive(Default, Debug)]
 struct BuilderFieldAnnotation {
@@ -234,7 +234,7 @@ pub fn unwrap_typ<'a>(typ: &'a Type, span: Span, expected: &str) -> syn::Result<
         span,
         format!(
             "Expected {expected}<_>, found {} instead",
-            typ.to_token_stream().to_string()
+            typ.to_token_stream()
         ),
     ))
 }

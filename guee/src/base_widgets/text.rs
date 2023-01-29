@@ -69,10 +69,10 @@ impl Widget for Text {
 
     fn on_event(
         &mut self,
-        ctx: &Context,
-        layout: &Layout,
-        cursor_position: Pos2,
-        events: &[Event],
+        _ctx: &Context,
+        _layout: &Layout,
+        _cursor_position: Pos2,
+        _events: &[Event],
     ) -> EventStatus {
         EventStatus::Ignored
     }

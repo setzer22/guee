@@ -31,7 +31,9 @@ impl<P> Callback<P> {
 }
 
 pub struct StateAccessor {
+    #[allow(unused)] // Will use them later
     input_type: TypeId,
+    #[allow(unused)]
     output_type: TypeId,
     #[allow(clippy::type_complexity)]
     accessor_fn: Box<dyn for<'a> Fn(&'a mut dyn Any) -> &'a mut dyn Any>,
@@ -161,6 +163,7 @@ pub struct CallbackDispatch {
     payload: Box<dyn Any>,
     // The invoker is a function that takes an erased callback, an erased state
     // and an erased payload, downcasts everything and invokes the callback.
+    #[allow(clippy::type_complexity)]
     invoker: Box<dyn FnOnce(Box<dyn Any>, &mut dyn Any, Box<dyn Any>)>,
 }
 

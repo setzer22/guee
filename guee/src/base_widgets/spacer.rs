@@ -6,7 +6,7 @@ use crate::{
     input::{Event, EventStatus},
     layout::{Layout, LayoutHints, SizeHint, SizeHints},
     widget::Widget,
-    widget_id::{IdGen, WidgetId},
+    widget_id::WidgetId,
 };
 
 #[derive(Builder)]

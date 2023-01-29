@@ -1,4 +1,4 @@
-use syn::{parse_macro_input, ItemStruct};
+use syn::parse_macro_input;
 
 mod derive_builder;
 

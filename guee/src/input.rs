@@ -1,4 +1,4 @@
-use epaint::{ahash::HashMap, Pos2};
+use epaint::{ahash::HashMap, Pos2, Vec2};
 use winit::event::{ElementState, VirtualKeyCode, WindowEvent};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -31,13 +31,22 @@ pub struct MouseState {
     pub button_state: HashMap<MouseButton, bool>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct InputState {
+    pub screen_size: Vec2,
     pub mouse_state: MouseState,
     pub ev_buffer: Vec<Event>,
 }
 
 impl InputState {
+    pub fn new(screen_size: Vec2) -> Self {
+        Self {
+            screen_size,
+            mouse_state: Default::default(),
+            ev_buffer: Default::default(),
+        }
+    }
+
     pub fn on_winit_event(&mut self, ev: &WindowEvent) {
         match ev {
             WindowEvent::CursorMoved { position, .. } => {
@@ -85,6 +94,9 @@ impl InputState {
                     self.ev_buffer.push(Event::Text(*ch));
                 }
             }
+            WindowEvent::Resized(new_size) => {
+                self.screen_size = Vec2::new(new_size.width as f32, new_size.height as f32);
+            }
             _ => (),
         }
     }
@@ -95,9 +107,9 @@ impl InputState {
 /// We also ignore '\r', '\n', '\t'.
 /// Newlines are handled by the `Key::Enter` event.
 fn is_printable_char(chr: char) -> bool {
-    let is_in_private_use_area = '\u{e000}' <= chr && chr <= '\u{f8ff}'
-        || '\u{f0000}' <= chr && chr <= '\u{ffffd}'
-        || '\u{100000}' <= chr && chr <= '\u{10fffd}';
+    let is_in_private_use_area = ('\u{e000}'..='\u{f8ff}').contains(&chr)
+        || ('\u{f0000}'..='\u{ffffd}').contains(&chr)
+        || ('\u{100000}'..='\u{10fffd}').contains(&chr);
 
     !is_in_private_use_area && !chr.is_ascii_control()
 }
