@@ -1,13 +1,15 @@
 [package]
-name = "guee"
+name = "guee_example"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-guee_derives = { path = "../guee_derives" }
+guee = { path = "../guee" }
 itertools = { workspace = true }
+egui-wgpu = { workspace = true }
 epaint = { workspace = true }
 winit = { workspace = true }
-bytemuck = "1"
+wgpu = { workspace = true }
+pollster = "0.2"

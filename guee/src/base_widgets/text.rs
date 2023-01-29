@@ -9,7 +9,6 @@ use crate::{
 };
 use epaint::{Color32, FontId, Fonts, Galley, Pos2, Shape, Stroke, TextShape, Vec2};
 use guee_derives::Builder;
-use typed_builder::TypedBuilder;
 
 #[derive(Clone, Builder)]
 pub struct Text {

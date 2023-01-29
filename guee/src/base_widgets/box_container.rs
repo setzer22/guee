@@ -7,7 +7,6 @@ use crate::{
 };
 use epaint::{Pos2, Vec2};
 use guee_derives::Builder;
-use typed_builder::TypedBuilder;
 
 #[derive(Builder)]
 pub struct BoxContainer {

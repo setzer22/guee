@@ -1,47 +1,8 @@
-use std::sync::Arc;
-
-use base_widgets::{
-    box_container::BoxContainer, button::Button, margin_container::MarginContainer, spacer::Spacer,
-    text::Text, text_edit::TextEdit,
-};
-use callback::Callback;
-use context::Context;
 use egui_wgpu::{winit::Painter, WgpuConfiguration};
-use epaint::{
-    text::FontDefinitions, textures::TexturesDelta, ClippedShape, Color32, FontId, Fonts, Galley,
-    Pos2, Rect, Shape, Stroke, TessellationOptions, TextShape, TextureId, Vec2,
-};
-use input::{EventStatus, InputState};
 use itertools::Itertools;
-use layout::{Align, Axis, AxisDirections, Layout, LayoutHints, SizeHint, SizeHints};
-use widget::{DynWidget, ToDynWidget, Widget};
-use winit::{
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
-};
 
-use crate::widget_id::IdGen;
-
-extern crate self as guee;
-
-//pub mod epaint_shape_routine;
-pub mod epaint_routine;
-
-pub mod widget_id;
-
-pub mod layout;
-
-pub mod widget;
-
-pub mod context;
-
-pub mod input;
-
-pub mod base_widgets;
-
-pub mod callback;
-
-pub mod memory;
+use guee::prelude::*;
+use winit::{event_loop::{EventLoop, ControlFlow}, window::WindowBuilder};
 
 #[derive(Default)]
 pub struct AppState {
