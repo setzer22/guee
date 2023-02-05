@@ -5,9 +5,9 @@ edition = "2021"
 
 [dependencies]
 guee = { path = "../guee" }
-itertools = { workspace = true }
-egui-wgpu = { workspace = true }
-epaint = { workspace = true }
-winit = { workspace = true }
-wgpu = { workspace = true }
+itertools = "0.10.5"
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "c58ac86935123415ea3c1531d735e708465267b6", features = ["winit"] }
+epaint = { git = "https://github.com/emilk/egui", rev = "c58ac86935123415ea3c1531d735e708465267b6", features = ["bytemuck"] }
+winit = "0.27.2"
+wgpu = "0.14"
 pollster = "0.2"

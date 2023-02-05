@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 guee_derives = { path = "../guee_derives" }
-itertools = { workspace = true }
-epaint = { workspace = true }
-winit = { workspace = true }
+itertools = "0.10.5"
+epaint = { git = "https://github.com/emilk/egui", rev = "c58ac86935123415ea3c1531d735e708465267b6", features = ["bytemuck"] }
+winit = "0.27.2"
 bytemuck = "1"
