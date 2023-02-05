@@ -205,4 +205,18 @@ impl Axis {
             Axis::Horizontal => Vec2::new(v.x + delta, v.y),
         }
     }
+
+    pub fn vec2_add(&self, v: Vec2, delta_main: f32, delta_cross: f32) -> Vec2 {
+        match self {
+            Axis::Vertical => Vec2::new(v.x + delta_cross, v.y + delta_main),
+            Axis::Horizontal => Vec2::new(v.x + delta_main, v.y + delta_cross),
+        }
+    }
+
+    pub fn vec2_scale(&self, v: Vec2, scale_main: f32, scale_cross: f32) -> Vec2 {
+        match self {
+            Axis::Vertical => Vec2::new(v.x * scale_cross, v.y * scale_main),
+            Axis::Horizontal => Vec2::new(v.x * scale_main, v.y * scale_cross),
+        }
+    }
 }

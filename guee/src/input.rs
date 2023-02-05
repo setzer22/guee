@@ -1,5 +1,9 @@
+use std::ops::Index;
+
 use epaint::{ahash::HashMap, Pos2, Vec2};
 use winit::event::{ElementState, VirtualKeyCode, WindowEvent};
+
+use crate::widget_id::WidgetId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MouseButton {
@@ -26,9 +30,35 @@ pub enum EventStatus {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct ButtonState {
+    state: HashMap<MouseButton, bool>,
+}
+
+impl ButtonState {
+    pub fn is_down(&self, button: MouseButton) -> bool {
+        *self.state.get(&button).unwrap_or(&false)
+    }
+
+    pub fn register_down(&mut self, button: MouseButton) {
+        *self.state.entry(button).or_default() = true;
+    }
+
+    pub fn register_up(&mut self, button: MouseButton) {
+        *self.state.entry(button).or_default() = false;
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct MouseState {
     pub position: Pos2,
-    pub button_state: HashMap<MouseButton, bool>,
+    pub prev_position: Pos2,
+    pub button_state: ButtonState,
+}
+
+impl MouseState {
+    pub fn delta(&self) -> Vec2 {
+        self.position - self.prev_position
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -47,6 +77,10 @@ impl InputState {
         }
     }
 
+    pub fn end_frame(&mut self) {
+        self.mouse_state.prev_position = self.mouse_state.position;
+    }
+
     pub fn on_winit_event(&mut self, ev: &WindowEvent) {
         match ev {
             WindowEvent::CursorMoved { position, .. } => {
@@ -61,15 +95,14 @@ impl InputState {
                     winit::event::MouseButton::Middle => MouseButton::Middle,
                     winit::event::MouseButton::Other(idx) => MouseButton::Other(*idx),
                 };
-                let entry = self.mouse_state.button_state.entry(button).or_default();
                 match state {
                     ElementState::Pressed => {
                         self.ev_buffer.push(Event::MousePressed(button));
-                        *entry = true;
+                        self.mouse_state.button_state.register_down(button);
                     }
                     ElementState::Released => {
                         self.ev_buffer.push(Event::MouseReleased(button));
-                        *entry = false;
+                        self.mouse_state.button_state.register_up(button);
                     }
                 }
             }

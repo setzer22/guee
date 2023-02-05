@@ -51,7 +51,7 @@ impl Widget for ColoredBox {
         ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
             rect: layout.bounds,
             rounding: self.rounding,
-            fill: dbg!(self.fill),
+            fill: self.fill,
             stroke: self.stroke,
         }));
     }

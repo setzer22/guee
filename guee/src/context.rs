@@ -53,6 +53,7 @@ impl Context {
         for callback in self.dispatched_callbacks.borrow_mut().drain(..) {
             self.accessor_registry.invoke_callback(state, callback);
         }
+        self.input_state.end_frame();
     }
 
     pub fn tessellate(&mut self) -> Vec<ClippedPrimitive> {

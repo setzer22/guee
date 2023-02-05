@@ -1,8 +1,9 @@
 pub use crate::{
     base_widgets::{
-        box_container::BoxContainer, button::Button, margin_container::MarginContainer,
-        spacer::Spacer, text::Text, text_edit::TextEdit,
-        stack_container::StackContainer, colored_box::ColoredBox,
+        box_container::BoxContainer, button::Button, colored_box::ColoredBox,
+        margin_container::MarginContainer, spacer::Spacer,
+        split_pane_container::SplitPaneContainer, stack_container::StackContainer, text::Text,
+        text_edit::TextEdit,
     },
     callback::Callback,
     context::Context,
