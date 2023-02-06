@@ -150,8 +150,18 @@ impl Widget for SplitPaneContainer {
                 }
             }
             self.hovered = true;
-        } else {
-            // Handle events in children
+        }
+        if state.dragging {
+            let delta = ctx.input_state.mouse_state.delta().main_dir(self.axis);
+            let main_size = layout.bounds.size().main_dir(self.axis);
+            state.frac += delta / main_size;
+            // Prevents hovering other widgets while dragging
+            self.hovered = true;
+            status = EventStatus::Consumed;
+        }
+
+        // If not yet handled, handle events in children
+        if status != EventStatus::Consumed {
             status = self
                 .left_widget
                 .widget
@@ -164,12 +174,6 @@ impl Widget for SplitPaneContainer {
                         events,
                     )
                 });
-        }
-
-        if state.dragging {
-            let delta = ctx.input_state.mouse_state.delta().main_dir(self.axis);
-            let main_size = layout.bounds.size().main_dir(self.axis);
-            state.frac += delta / main_size;
         }
 
         status

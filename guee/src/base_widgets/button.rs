@@ -66,11 +66,11 @@ impl Widget for Button {
             rect: layout.bounds,
             rounding: Rounding::same(2.0),
             fill: if self.pressed {
-                Color32::from_rgba_unmultiplied(80, 240, 80, 50)
+                Color32::from_rgb(80, 240, 80)
             } else if self.hovered {
-                Color32::from_rgba_unmultiplied(50, 210, 50, 50)
+                Color32::from_rgb(50, 210, 50)
             } else {
-                Color32::from_rgba_unmultiplied(35, 195, 35, 50)
+                Color32::from_rgb(35, 195, 35)
             },
             stroke: Stroke::NONE,
         }));

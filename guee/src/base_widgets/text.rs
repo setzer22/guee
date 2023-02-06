@@ -15,7 +15,7 @@ pub struct Text {
     contents: String,
     #[builder(skip)]
     last_galley: Option<Arc<Galley>>,
-    #[builder(default)]
+    #[builder(default = Color32::BLACK)]
     color: Color32,
 }
 
