@@ -26,12 +26,11 @@ pub struct SplitPaneContainer {
     handle_width: f32,
     #[builder(skip)]
     hovered: bool,
-    #[builder(skip)]
-    clicked: bool,
 }
 
 pub struct SplitPaneContainerState {
     frac: f32,
+    dragging: bool,
 }
 
 impl SplitPaneContainer {
@@ -56,6 +55,7 @@ impl SplitPaneContainer {
                 widget_id,
                 SplitPaneContainerState {
                     frac: self.default_frac,
+                    dragging: false,
                 },
             )
             .frac
@@ -134,38 +134,44 @@ impl Widget for SplitPaneContainer {
             .resize_handle_rect(state.frac, layout.bounds)
             .contains(cursor_position);
 
+        let mut status = EventStatus::Ignored;
         if mouse_in_handle {
-            // Try to handle events in resize area
-            let mut status = EventStatus::Ignored;
-            if ctx
-                .input_state
-                .mouse_state
-                .button_state
-                .is_down(MouseButton::Primary)
-            {
-                self.clicked = true;
-                status = EventStatus::Consumed;
-                let delta = ctx.input_state.mouse_state.delta().main_dir(self.axis);
-                // WIP: This delta is clearly wrong. I need to convert from
-                // pixels to fraction using the rect bounds size.
-                state.frac += delta * 0.01;
-            };
+            for event in events {
+                match event {
+                    Event::MousePressed(MouseButton::Primary) => {
+                        state.dragging = true;
+                        status = EventStatus::Consumed;
+                    }
+                    Event::MouseReleased(MouseButton::Primary) => {
+                        state.dragging = false;
+                        status = EventStatus::Consumed;
+                    }
+                    _ => (),
+                }
+            }
             self.hovered = true;
-            status
         } else {
             // Handle events in children
-            if self
+            status = self
                 .left_widget
                 .widget
                 .on_event(ctx, &layout.children[0], cursor_position, events)
-                == EventStatus::Consumed
-            {
-                EventStatus::Consumed
-            } else {
-                self.right_widget
-                    .widget
-                    .on_event(ctx, &layout.children[1], cursor_position, events)
-            }
+                .or_else(|| {
+                    self.right_widget.widget.on_event(
+                        ctx,
+                        &layout.children[1],
+                        cursor_position,
+                        events,
+                    )
+                });
         }
+
+        if state.dragging {
+            let delta = ctx.input_state.mouse_state.delta().main_dir(self.axis);
+            let main_size = layout.bounds.size().main_dir(self.axis);
+            state.frac += delta / main_size;
+        }
+
+        status
     }
 }

@@ -29,6 +29,15 @@ pub enum EventStatus {
     Consumed,
 }
 
+impl EventStatus {
+    pub fn or_else(&self, f: impl FnOnce() -> EventStatus) -> Self {
+        match self {
+            EventStatus::Ignored => f(),
+            EventStatus::Consumed => EventStatus::Consumed,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct ButtonState {
     state: HashMap<MouseButton, bool>,
