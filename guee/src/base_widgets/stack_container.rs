@@ -10,6 +10,7 @@ use crate::{
 };
 
 #[derive(Builder)]
+#[builder(widget)]
 pub struct StackContainer {
     id: IdGen,
     contents: Vec<(Vec2, DynWidget)>,

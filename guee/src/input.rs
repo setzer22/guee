@@ -1,9 +1,5 @@
-use std::ops::Index;
-
 use epaint::{ahash::HashMap, Pos2, Vec2};
 use winit::event::{ElementState, VirtualKeyCode, WindowEvent};
-
-use crate::widget_id::WidgetId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MouseButton {

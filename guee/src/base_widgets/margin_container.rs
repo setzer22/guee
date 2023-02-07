@@ -10,6 +10,7 @@ use crate::{
 };
 
 #[derive(Builder)]
+#[builder(widget)]
 pub struct MarginContainer {
     id: IdGen,
     #[builder(default)]

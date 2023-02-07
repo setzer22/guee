@@ -2,13 +2,14 @@ use crate::{
     context::Context,
     input::{Event, EventStatus},
     layout::{Layout, LayoutHints, SizeHint},
-    widget::{DynWidget, Widget},
+    widget::Widget,
     widget_id::{IdGen, WidgetId},
 };
 use epaint::{Color32, Pos2, RectShape, Rounding, Shape, Stroke, Vec2};
 use guee_derives::Builder;
 
 #[derive(Builder)]
+#[builder(widget)]
 pub struct ColoredBox {
     pub id: IdGen,
     #[builder(default)]

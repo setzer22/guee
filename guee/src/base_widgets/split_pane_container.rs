@@ -13,6 +13,7 @@ use crate::{
 };
 
 #[derive(Builder)]
+#[builder(widget)]
 pub struct SplitPaneContainer {
     id: IdGen,
     #[builder(default)]

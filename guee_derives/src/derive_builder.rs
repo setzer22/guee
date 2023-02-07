@@ -1,6 +1,29 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{parenthesized, parse::Parse, Expr, PathArguments, Token, Type};
+use syn::{ext::IdentExt, parenthesized, parse::Parse, parse2, Expr, PathArguments, Token, Type};
+
+#[derive(Default, Debug)]
+struct BuilderStructAnnotation {
+    is_widget: bool,
+}
+
+impl Parse for BuilderStructAnnotation {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let contents;
+        parenthesized!(contents in input);
+
+        let mut ann = BuilderStructAnnotation::default();
+        if contents.peek(Ident::peek_any) {
+            let id = contents.parse::<Ident>()?;
+            if id == "widget" {
+                ann.is_widget = true;
+            } else {
+                return Err(syn::Error::new(id.span(), "Unsupported annotation: '{id}'"));
+            }
+        }
+        Ok(ann)
+    }
+}
 
 #[derive(Default, Debug)]
 struct BuilderFieldAnnotation {
@@ -44,6 +67,18 @@ impl Parse for BuilderFieldAnnotation {
     }
 }
 
+impl BuilderFieldAnnotation {
+    pub fn validate(&self, struct_ann: &BuilderStructAnnotation, span: Span) -> syn::Result<()> {
+        if !struct_ann.is_widget && self.is_callback {
+            return Err(syn::Error::new(
+                span,
+                "Callback fields not supported if #[builder(widget)] is not used.",
+            ));
+        }
+        Ok(())
+    }
+}
+
 pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let s = match input.data {
         syn::Data::Struct(s) => s,
@@ -55,6 +90,20 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
         }
     };
     let s_ident = input.ident;
+
+    let mut struct_annotation = BuilderStructAnnotation::default();
+    for attr in &input.attrs {
+        if attr
+            .path
+            .get_ident()
+            .map(|id| id == "builder")
+            .unwrap_or(false)
+        {
+            if let Ok(ann) = parse2::<BuilderStructAnnotation>(attr.tokens.clone()) {
+                struct_annotation = ann;
+            }
+        }
+    }
 
     #[derive(Debug)]
     struct MandatoryField {
@@ -104,7 +153,9 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
                     .map(|x| x == "builder")
                     .unwrap_or(false)
                 {
+                    let span = field.ident.as_ref().expect("Should be a struct").span();
                     let ann: BuilderFieldAnnotation = syn::parse2(attr.tokens)?;
+                    ann.validate(&struct_annotation, span)?;
                     if ann.is_default {
                         optional_fields.push(OptionalField {
                             ident: field.ident.take().unwrap(),
@@ -169,7 +220,7 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
             if opt.skip_setter {
                 Ok(quote!())
             } else if opt.is_callback {
-                let docstring = format!(" Sets the `{}` callback for this `{}`.", ident, s_ident);
+                let docstring = format!(" Sets the `{ident}` callback for this `{s_ident}`.");
                 let cb_type = unwrap_callback_type(ident.span(), ty)?;
                 Ok(quote! {
                     #[doc = #docstring]
@@ -184,11 +235,8 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
                     }
                 })
             } else {
-                let docstring = format!(
-                    " Sets the `{}` for this `{}` to a custom value.",
-                    ident, s_ident
-                );
-
+                let docstring =
+                    format!(" Sets the `{ident}` for this `{s_ident}` to a custom value.",);
                 Ok(quote! {
                     #[doc = #docstring]
                     pub fn #ident(mut self, arg: #ty) -> Self {
@@ -200,13 +248,21 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
         })
         .collect::<syn::Result<Vec<_>>>()?;
 
+    let widget_build_fn = if struct_annotation.is_widget {
+        quote! {
+            pub fn build(self) -> guee::widget::DynWidget {
+                guee::widget::DynWidget::new(self)
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     Ok(quote! {
         impl #s_ident {
             #constructor
             #(#setters)*
-            pub fn build(self) -> guee::widget::DynWidget {
-                guee::widget::DynWidget::new(self)
-            }
+            #widget_build_fn
         }
     })
 }

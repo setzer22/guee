@@ -21,6 +21,7 @@ use super::button::Button;
 pub mod text_buffer;
 
 #[derive(Builder)]
+#[builder(widget)]
 pub struct TextEdit {
     id: IdGen,
     contents: String,

@@ -9,6 +9,7 @@ use epaint::{Pos2, Vec2};
 use guee_derives::Builder;
 
 #[derive(Builder)]
+#[builder(widget)]
 pub struct BoxContainer {
     id: IdGen,
     axis: Axis,

@@ -1,12 +1,16 @@
 use std::{any::Any, cell::RefCell};
 
-use epaint::{text::FontDefinitions, ClippedPrimitive, Fonts, Pos2, Shape, Vec2, Rect, TessellationOptions, ClippedShape};
+use epaint::{
+    text::FontDefinitions, ClippedPrimitive, ClippedShape, Fonts, Pos2, Rect, Shape,
+    TessellationOptions, Vec2,
+};
 use itertools::Itertools;
 
 use crate::{
     callback::{AccessorRegistry, Callback, CallbackDispatch},
     input::InputState,
     memory::Memory,
+    theme::Theme,
     widget::DynWidget,
     widget_id::WidgetId,
 };
@@ -19,6 +23,7 @@ pub struct Context {
     pub dispatched_callbacks: RefCell<Vec<CallbackDispatch>>,
     pub memory: Memory,
     pub focus: RefCell<Option<WidgetId>>,
+    pub theme: RefCell<Theme>,
 }
 
 impl Context {
@@ -31,13 +36,15 @@ impl Context {
             accessor_registry: Default::default(),
             memory: Default::default(),
             focus: Default::default(),
+            theme: RefCell::new(Theme::new_empty()),
         }
     }
     pub fn run(&mut self, widget: &mut DynWidget, state: &mut dyn Any) {
-        let mut layout =
-            widget
-                .widget
-                .layout(self, WidgetId::new("__ROOT__"), self.input_state.screen_size);
+        let mut layout = widget.widget.layout(
+            self,
+            WidgetId::new("__ROOT__"),
+            self.input_state.screen_size,
+        );
         layout.to_absolute(Vec2::ZERO);
         let events = std::mem::take(&mut self.input_state.ev_buffer);
         widget
@@ -87,5 +94,9 @@ impl Context {
 
     pub fn is_focused(&self, widget_id: WidgetId) -> bool {
         self.focus.borrow().map(|x| widget_id == x).unwrap_or(false)
+    }
+
+    pub fn set_theme(&mut self, theme: Theme) {
+        self.theme = RefCell::new(theme);
     }
 }

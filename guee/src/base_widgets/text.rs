@@ -11,6 +11,7 @@ use epaint::{Color32, FontId, Fonts, Galley, Pos2, Shape, Stroke, TextShape, Vec
 use guee_derives::Builder;
 
 #[derive(Clone, Builder)]
+#[builder(widget)]
 pub struct Text {
     contents: String,
     #[builder(skip)]

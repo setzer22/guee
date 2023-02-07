@@ -10,6 +10,7 @@ use crate::{
 };
 
 #[derive(Builder)]
+#[builder(widget)]
 pub struct Spacer {
     min_size: Vec2,
     layout_hints: LayoutHints,
