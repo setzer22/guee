@@ -72,7 +72,16 @@ impl SplitPaneContainer {
         widget_id: WidgetId,
         ctx: &'ctx Context,
     ) -> impl DerefMut<Target = SplitPaneContainerState> + 'ctx {
-        ctx.memory.get_mut(widget_id)
+        // WIP: There's a double borrow issue here. Because this get_mut borrows
+        // the whole memory mutably, and when nesting SplitPaneContainer's,
+        // memory is accessed more than once.
+        //
+        // We need to move the interior mutability further down (one RefCell per
+        // widget state stored in memory).
+        //
+        // Unrelated, but important: we also need to do some sort of per-frame
+        // cleanup of old memory data. I forgot about this.
+        ctx.memory.get_mut(dbg!(widget_id))
     }
 }
 

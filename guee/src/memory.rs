@@ -42,6 +42,7 @@ impl Memory {
         })
     }
 
+    #[track_caller]
     pub fn get_mut<T: 'static>(&self, id: WidgetId) -> impl DerefMut<Target = T> + '_ {
         let mem = self.widget_memory.borrow_mut();
         RefMut::map(mem, |x| {
