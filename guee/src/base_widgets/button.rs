@@ -8,7 +8,7 @@ use crate::{
     widget::{DynWidget, Widget},
     widget_id::{IdGen, WidgetId},
 };
-use epaint::{Color32, Pos2, RectShape, Rounding, Shape, Stroke, Vec2};
+use epaint::{Color32, Pos2, RectShape, Rounding, Stroke, Vec2};
 use guee_derives::Builder;
 
 use super::text::Text;
@@ -38,8 +38,6 @@ pub struct ButtonStyle {
     pub hovered_stroke: Stroke,
     pub idle_fill: Color32,
     pub idle_stroke: Stroke,
-    #[builder(default = Color32::BLACK)]
-    pub text_color: Color32,
     #[builder(default = Rounding::same(2.0))]
     pub rounding: Rounding,
 }
@@ -83,7 +81,7 @@ impl Widget for Button {
         let theme = ctx.theme.borrow();
         let style = theme.get_style::<Self>().unwrap_or(&default_style);
 
-        ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
+        ctx.painter().rect(RectShape {
             rect: layout.bounds,
             rounding: style.rounding,
             fill: if self.pressed {
@@ -100,7 +98,7 @@ impl Widget for Button {
             } else {
                 style.idle_stroke
             },
-        }));
+        });
         self.contents.widget.draw(ctx, &layout.children[0]);
     }
 

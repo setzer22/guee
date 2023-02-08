@@ -7,7 +7,7 @@ use crate::{
     widget::Widget,
     widget_id::WidgetId,
 };
-use epaint::{Color32, FontId, Fonts, Galley, Pos2, Shape, Stroke, TextShape, Vec2};
+use epaint::{Color32, FontId, Fonts, Galley, Pos2, Stroke, TextShape, Vec2};
 use guee_derives::Builder;
 
 #[derive(Clone, Builder)]
@@ -16,8 +16,8 @@ pub struct Text {
     contents: String,
     #[builder(skip)]
     last_galley: Option<Arc<Galley>>,
-    #[builder(default = Color32::BLACK)]
-    color: Color32,
+    #[builder(default)]
+    color_override: Option<Color32>,
 }
 
 impl Text {
@@ -25,7 +25,7 @@ impl Text {
         let galley = fonts.layout(
             self.contents.clone(),
             FontId::proportional(14.0),
-            self.color,
+            Color32::BLACK, // overriden later by the theme color
             wrap_width,
         );
         self.last_galley = Some(galley.clone());
@@ -46,13 +46,13 @@ impl Widget for Text {
             .last_galley
             .clone()
             .expect("Layout should be called before draw");
-        ctx.shapes.borrow_mut().push(Shape::Text(TextShape {
+        ctx.painter().text(TextShape {
             pos: layout.bounds.left_top(),
             galley,
             underline: Stroke::NONE,
             override_text_color: None,
             angle: 0.0,
-        }));
+        });
     }
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {

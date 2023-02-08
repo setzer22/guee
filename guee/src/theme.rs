@@ -3,6 +3,8 @@ use std::{
     collections::HashMap,
 };
 
+use epaint::Color32;
+
 use crate::prelude::Widget;
 
 pub trait StyledWidget: Widget {
@@ -10,12 +12,14 @@ pub trait StyledWidget: Widget {
 }
 
 pub struct Theme {
+    pub text_color: Color32,
     widget_styles: HashMap<TypeId, Box<dyn Any>>,
 }
 
 impl Theme {
     pub fn new_empty() -> Self {
         Theme {
+            text_color: Color32::BLACK,
             widget_styles: Default::default(),
         }
     }

@@ -5,7 +5,7 @@ use crate::{
     widget::Widget,
     widget_id::{IdGen, WidgetId},
 };
-use epaint::{Color32, Pos2, RectShape, Rounding, Shape, Stroke, Vec2};
+use epaint::{Color32, Pos2, RectShape, Rounding, Stroke, Vec2};
 use guee_derives::Builder;
 
 #[derive(Builder)]
@@ -49,12 +49,12 @@ impl Widget for ColoredBox {
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
-        ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
+        ctx.painter().rect(RectShape {
             rect: layout.bounds,
             rounding: self.rounding,
             fill: self.fill,
             stroke: self.stroke,
-        }));
+        });
     }
 
     fn min_size(&mut self, _ctx: &Context, _available: Vec2) -> Vec2 {

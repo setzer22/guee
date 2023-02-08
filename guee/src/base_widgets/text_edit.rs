@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use epaint::{
-    text::cursor::Cursor, Color32, FontId, Galley, Pos2, RectShape, Rounding, Shape, Stroke,
-    TextShape, Vec2,
+    text::cursor::Cursor, Color32, FontId, Galley, Pos2, RectShape, Rounding, Stroke, TextShape,
+    Vec2,
 };
 use guee_derives::Builder;
 use winit::event::VirtualKeyCode;
@@ -75,23 +75,23 @@ impl Widget for TextEdit {
             .get_mut_or(layout.widget_id, TextEditUiState::default());
         let focused = ctx.is_focused(layout.widget_id);
 
-        ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
+        ctx.painter().rect(RectShape {
             rect: layout.bounds,
             rounding: Rounding::same(1.0),
             fill: Color32::from_rgb(40, 40, 40),
             stroke: Stroke::new(2.0, Color32::from_rgb(80, 80, 80)),
-        }));
+        });
 
         let text_bounds = layout.bounds.shrink2(self.padding);
 
         let galley = self.galley.clone().unwrap();
-        ctx.shapes.borrow_mut().push(Shape::Text(TextShape {
+        ctx.painter().text(TextShape {
             pos: text_bounds.left_top(),
             galley: galley.clone(),
             underline: Stroke::NONE,
             override_text_color: None,
             angle: 0.0,
-        }));
+        });
 
         if focused {
             let cursor = galley.cursor_end_of_row(&ui_state.cursor);
@@ -99,12 +99,12 @@ impl Widget for TextEdit {
                 .pos_from_cursor(&cursor)
                 .expand2(Vec2::new(1.0, 0.0))
                 .translate(text_bounds.left_top().to_vec2());
-            ctx.shapes.borrow_mut().push(Shape::Rect(RectShape {
+            ctx.painter().rect(RectShape {
                 rect: cursor_rect,
                 rounding: Rounding::none(),
                 fill: Color32::WHITE,
                 stroke: Stroke::NONE,
-            }));
+            });
         }
     }
 

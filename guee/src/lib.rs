@@ -8,6 +8,8 @@ pub mod layout;
 
 pub mod widget;
 
+pub mod painter;
+
 pub mod context;
 
 pub mod input;

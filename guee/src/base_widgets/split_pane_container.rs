@@ -7,7 +7,7 @@ use crate::{
     context::Context,
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints},
-    prelude::{Axis, AxisDirections},
+    prelude::{Axis, AxisDirections, StyledWidget},
     widget::{DynWidget, Widget},
     widget_id::{IdGen, WidgetId},
 };
@@ -27,6 +27,11 @@ pub struct SplitPaneContainer {
     handle_width: f32,
     #[builder(skip)]
     hovered: bool,
+}
+
+#[derive(Builder)]
+pub struct SplitPaneContainerStyle {
+    pub handle_color: Color32,
 }
 
 pub struct SplitPaneContainerState {
@@ -101,14 +106,21 @@ impl Widget for SplitPaneContainer {
         let frac = self.get_frac(layout.widget_id, ctx);
         self.left_widget.widget.draw(ctx, &layout.children[0]);
         self.right_widget.widget.draw(ctx, &layout.children[1]);
+
+        let default_style = SplitPaneContainerStyle {
+            handle_color: Color32::BLACK,
+        };
+        let theme = ctx.theme.borrow();
+        let style = theme.get_style::<Self>().unwrap_or(&default_style);
+
         if self.hovered {
             let handle_rect = self.resize_handle_visual_rect(frac, layout.bounds);
-            ctx.shapes.borrow_mut().push(epaint::Shape::Rect(RectShape {
+            ctx.painter().rect(RectShape {
                 rect: handle_rect,
                 rounding: Rounding::same(2.0),
-                fill: Color32::GREEN,
+                fill: style.handle_color,
                 stroke: Stroke::NONE,
-            }));
+            });
         }
     }
 
@@ -138,24 +150,24 @@ impl Widget for SplitPaneContainer {
         let mut status = EventStatus::Ignored;
         if mouse_in_handle {
             for event in events {
-                match event {
-                    Event::MousePressed(MouseButton::Primary) => {
-                        state.dragging = true;
-                        status = EventStatus::Consumed;
-                    }
-                    Event::MouseReleased(MouseButton::Primary) => {
-                        state.dragging = false;
-                        status = EventStatus::Consumed;
-                    }
-                    _ => (),
+                if let Event::MousePressed(MouseButton::Primary) = event {
+                    state.dragging = true;
+                    status = EventStatus::Consumed;
                 }
             }
             self.hovered = true;
+        }
+        for event in events {
+            if let Event::MouseReleased(MouseButton::Primary) = event {
+                state.dragging = false;
+                status = EventStatus::Consumed;
+            }
         }
         if state.dragging {
             let delta = ctx.input_state.mouse_state.delta().main_dir(self.axis);
             let main_size = layout.bounds.size().main_dir(self.axis);
             state.frac += delta / main_size;
+            state.frac = state.frac.clamp(0.01, 0.99);
             // Prevents hovering other widgets while dragging
             self.hovered = true;
             status = EventStatus::Consumed;
@@ -179,4 +191,8 @@ impl Widget for SplitPaneContainer {
 
         status
     }
+}
+
+impl StyledWidget for SplitPaneContainer {
+    type Style = SplitPaneContainerStyle;
 }
