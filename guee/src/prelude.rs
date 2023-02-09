@@ -12,11 +12,11 @@ pub use crate::{
     },
     callback::Callback,
     context::Context,
-    input::{EventStatus, InputState},
+    input::{EventStatus, InputState, Event},
     layout::{Align, Axis, AxisDirections, Layout, LayoutHints, SizeHint, SizeHints},
     theme::{StyledWidget, Theme},
     widget::{DynWidget, ToDynWidget, Widget},
-    widget_id::IdGen,
+    widget_id::{WidgetId, IdGen},
 };
 pub use epaint::{
     text::FontDefinitions, textures::TexturesDelta, ClippedShape, Color32, FontId, Fonts, Galley,

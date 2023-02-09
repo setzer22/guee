@@ -10,6 +10,7 @@ use crate::widget_id::WidgetId;
 
 #[derive(Default)]
 pub struct Memory {
+    // TODO: Cleanup old memory bits once they're no longer referenced
     pub widget_memory: RefCell<HashMap<WidgetId, Box<dyn Any>>>,
 }
 

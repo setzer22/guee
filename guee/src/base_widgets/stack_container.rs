@@ -14,8 +14,6 @@ use crate::{
 pub struct StackContainer {
     id: IdGen,
     contents: Vec<(Vec2, DynWidget)>,
-    #[builder(default)]
-    layout_hints: LayoutHints,
 }
 
 impl Widget for StackContainer {
@@ -56,7 +54,7 @@ impl Widget for StackContainer {
     }
 
     fn layout_hints(&self) -> LayoutHints {
-        self.layout_hints
+        LayoutHints::fill()
     }
 
     fn on_event(

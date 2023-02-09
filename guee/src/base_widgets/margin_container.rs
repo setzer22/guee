@@ -1,4 +1,6 @@
-use epaint::{Pos2, Vec2};
+use std::borrow::Borrow;
+
+use epaint::{Color32, Pos2, Stroke, Vec2, RectShape, Rounding};
 use guee_derives::Builder;
 
 use crate::{
@@ -16,6 +18,12 @@ pub struct MarginContainer {
     #[builder(default)]
     margin: Vec2,
     contents: DynWidget,
+    #[builder(default = Color32::TRANSPARENT)]
+    background_color: Color32,
+    #[builder(default = Stroke::NONE)]
+    background_stroke: Stroke,
+    #[builder(default = Rounding::none())]
+    background_rounding: Rounding,
 }
 
 impl Widget for MarginContainer {
@@ -35,6 +43,13 @@ impl Widget for MarginContainer {
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
+        ctx.painter().rect(RectShape {
+            rect: layout.bounds,
+            rounding: self.background_rounding,
+            fill: self.background_color,
+            stroke: self.background_stroke,
+        });
+
         self.contents.widget.draw(ctx, &layout.children[0])
     }
 

@@ -52,6 +52,16 @@ impl Default for LayoutHints {
 }
 
 impl LayoutHints {
+    pub fn shrink() -> Self {
+        LayoutHints {
+            size_hints: SizeHints {
+                width: SizeHint::Shrink,
+                height: SizeHint::Shrink,
+            },
+            weight: 0,
+        }
+    }
+
     pub fn fill() -> Self {
         LayoutHints {
             size_hints: SizeHints {
