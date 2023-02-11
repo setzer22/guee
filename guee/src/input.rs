@@ -13,6 +13,7 @@ pub enum MouseButton {
 pub enum Event {
     MousePressed(MouseButton),
     MouseReleased(MouseButton),
+    MouseWheel(Vec2),
     MouseMoved(Pos2),
     Text(char),
     KeyPressed(VirtualKeyCode),
@@ -110,6 +111,16 @@ impl InputState {
                         self.mouse_state.button_state.register_up(button);
                     }
                 }
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                const PIXELS_PER_LINE: f32 = 50.0;
+                self.ev_buffer.push(Event::MouseWheel(match delta {
+                    winit::event::MouseScrollDelta::LineDelta(x, y) => Vec2::new(*x, *y),
+                    winit::event::MouseScrollDelta::PixelDelta(pos) => Vec2::new(
+                        pos.x as f32 * PIXELS_PER_LINE,
+                        pos.y as f32 * PIXELS_PER_LINE,
+                    ),
+                }))
             }
             WindowEvent::KeyboardInput { input, .. } => {
                 if let Some(keycode) = input.virtual_keycode {

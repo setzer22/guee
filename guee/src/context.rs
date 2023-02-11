@@ -1,23 +1,21 @@
 use std::{any::Any, cell::RefCell, ops::DerefMut};
 
 use epaint::{
-    text::FontDefinitions, ClippedPrimitive, Fonts, Pos2, Rect, TessellationOptions,
-    Vec2,
+    text::FontDefinitions, ClippedPrimitive, Fonts, Pos2, Rect, TessellationOptions, Vec2,
 };
 
 use crate::{
     callback::{AccessorRegistry, Callback, CallbackDispatch},
     input::InputState,
     memory::Memory,
-    painter::Painter,
+    painter::{Painter, TranslateScale},
     theme::Theme,
     widget::DynWidget,
     widget_id::WidgetId,
 };
 
 pub struct Context {
-    pub fonts: Fonts,
-    pub painter: Option<RefCell<Painter>>,
+    pub painter: RefCell<Painter>,
     pub input_state: InputState,
     pub accessor_registry: AccessorRegistry,
     pub dispatched_callbacks: RefCell<Vec<CallbackDispatch>>,
@@ -29,8 +27,7 @@ pub struct Context {
 impl Context {
     pub fn new(screen_size: Vec2) -> Self {
         Self {
-            fonts: Fonts::new(1.0, 1024, FontDefinitions::default()),
-            painter: Default::default(),
+            painter: RefCell::new(Painter::new()),
             input_state: InputState::new(screen_size),
             dispatched_callbacks: Default::default(),
             accessor_registry: Default::default(),
@@ -41,11 +38,10 @@ impl Context {
     }
     pub fn run(&mut self, widget: &mut DynWidget, state: &mut dyn Any) {
         // Initialize a fresh painter
-        self.painter = Some(RefCell::new(Painter {
-            clip_rect: Rect::from_min_size(Pos2::ZERO, self.input_state.screen_size),
-            text_color: self.theme.borrow().text_color,
-            shapes: Vec::new(),
-        }));
+        self.painter.borrow_mut().prepare(
+            Rect::from_min_size(Pos2::ZERO, self.input_state.screen_size),
+            self.theme.borrow().text_color,
+        );
 
         let mut layout = widget.widget.layout(
             self,
@@ -71,18 +67,14 @@ impl Context {
     }
 
     pub fn tessellate(&mut self) -> Vec<ClippedPrimitive> {
-        let painter = self
-            .painter
-            .take()
-            .expect("Called tessellate() without a previous call to run()")
-            .into_inner();
+        let mut painter = self.painter.borrow_mut();
 
         epaint::tessellate_shapes(
             1.0,
             TessellationOptions::default(),
-            self.fonts.font_image_size(),
+            painter.fonts.font_image_size(),
             vec![],
-            painter.shapes,
+            std::mem::take(&mut painter.shapes),
         )
     }
 
@@ -115,6 +107,6 @@ impl Context {
     /// - When you request multiple painter borrows at the same time.
     /// - When the painter is not set, because there is no frame being rendered.
     pub fn painter(&self) -> impl DerefMut<Target = Painter> + '_ {
-        self.painter.as_ref().unwrap().borrow_mut()
+        self.painter.borrow_mut()
     }
 }

@@ -12,6 +12,7 @@ use crate::{
     context::Context,
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints, SizeHint},
+    painter::{GueeGalley, GueeTextShape},
     widget::Widget,
     widget_id::{IdGen, WidgetId},
 };
@@ -30,7 +31,7 @@ pub struct TextEdit {
     #[builder(default)]
     layout_hints: LayoutHints,
     #[builder(skip)]
-    galley: Option<Arc<Galley>>,
+    galley: Option<GueeGalley>,
     #[builder(callback)]
     on_changed: Option<Callback<String>>,
     #[builder(default = 100.0)]
@@ -53,16 +54,13 @@ impl Widget for TextEdit {
             SizeHint::Fill => available.x,
         };
 
-        let galley = ctx.fonts.layout(
-            self.contents.clone(),
-            FontId::proportional(14.0),
-            Color32::WHITE,
-            width,
-        );
+        let galley = ctx
+            .painter()
+            .galley(self.contents.clone(), FontId::proportional(14.0), width);
         self.galley = Some(galley.clone());
 
         let height = match size_hints.height {
-            SizeHint::Shrink => galley.size().y + 2.0 * padding.y,
+            SizeHint::Shrink => galley.bounds().width() + 2.0 * padding.y,
             SizeHint::Fill => available.y,
         };
 
@@ -85,17 +83,16 @@ impl Widget for TextEdit {
         let text_bounds = layout.bounds.shrink2(self.padding);
 
         let galley = self.galley.clone().unwrap();
-        ctx.painter().text(TextShape {
+        ctx.painter().text(GueeTextShape {
             pos: text_bounds.left_top(),
             galley: galley.clone(),
             underline: Stroke::NONE,
-            override_text_color: None,
             angle: 0.0,
         });
 
         if focused {
-            let cursor = galley.cursor_end_of_row(&ui_state.cursor);
-            let cursor_rect = galley
+            let cursor = galley.epaint_galley.cursor_end_of_row(&ui_state.cursor);
+            let cursor_rect = galley.epaint_galley
                 .pos_from_cursor(&cursor)
                 .expand2(Vec2::new(1.0, 0.0))
                 .translate(text_bounds.left_top().to_vec2());

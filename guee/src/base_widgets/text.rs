@@ -4,10 +4,11 @@ use crate::{
     context::Context,
     input::{Event, EventStatus},
     layout::{Layout, LayoutHints, SizeHint, SizeHints},
+    painter::{GueeGalley, GueeTextShape},
     widget::Widget,
     widget_id::WidgetId,
 };
-use epaint::{Color32, FontId, Fonts, Galley, Pos2, Stroke, TextShape, Vec2};
+use epaint::{Color32, FontId, Pos2, Stroke, Vec2};
 use guee_derives::Builder;
 
 #[derive(Clone, Builder)]
@@ -15,17 +16,16 @@ use guee_derives::Builder;
 pub struct Text {
     contents: String,
     #[builder(skip)]
-    last_galley: Option<Arc<Galley>>,
+    last_galley: Option<GueeGalley>,
     #[builder(default)]
     color_override: Option<Color32>,
 }
 
 impl Text {
-    pub fn ensure_galley(&mut self, fonts: &Fonts, wrap_width: f32) -> Arc<Galley> {
-        let galley = fonts.layout(
+    pub fn ensure_galley(&mut self, ctx: &Context, wrap_width: f32) -> GueeGalley {
+        let galley = ctx.painter().galley(
             self.contents.clone(),
             FontId::proportional(14.0),
-            Color32::BLACK, // overriden later by the theme color
             wrap_width,
         );
         self.last_galley = Some(galley.clone());
@@ -46,18 +46,17 @@ impl Widget for Text {
             .last_galley
             .clone()
             .expect("Layout should be called before draw");
-        ctx.painter().text(TextShape {
-            pos: layout.bounds.left_top(),
+        ctx.painter().text(GueeTextShape {
             galley,
+            pos: layout.bounds.left_top(),
             underline: Stroke::NONE,
-            override_text_color: None,
             angle: 0.0,
         });
     }
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        let galley = self.ensure_galley(&ctx.fonts, available.x);
-        galley.rect.size()
+        let galley = self.ensure_galley(&ctx, available.x);
+        galley.bounds().size()
     }
 
     fn layout_hints(&self) -> LayoutHints {
