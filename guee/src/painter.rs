@@ -126,14 +126,15 @@ impl Painter {
         let galley = if self.transform.scale != 1.0 {
             let mut font_id = galley.font_id.clone();
             font_id.size = self.transform.transform_scalar(font_id.size);
+            let wrap_width = self.transform.transform_scalar(galley.wrap_width);
             GueeGalley {
                 epaint_galley: self.fonts.layout(
                     galley.epaint_galley.job.text.clone(),
-                    font_id,
+                    font_id.clone(),
                     Color32::BLACK, // Ignored
-                    self.transform.transform_scalar(galley.wrap_width)
+                    wrap_width,
                 ),
-                font_id: galley.font_id,
+                font_id,
                 wrap_width: galley.wrap_width,
             }
         } else {

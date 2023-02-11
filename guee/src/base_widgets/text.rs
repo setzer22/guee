@@ -19,13 +19,15 @@ pub struct Text {
     last_galley: Option<GueeGalley>,
     #[builder(default)]
     color_override: Option<Color32>,
+    #[builder(default = 14.0)]
+    font_size: f32,
 }
 
 impl Text {
     pub fn ensure_galley(&mut self, ctx: &Context, wrap_width: f32) -> GueeGalley {
         let galley = ctx.painter().galley(
             self.contents.clone(),
-            FontId::proportional(14.0),
+            FontId::proportional(self.font_size),
             wrap_width,
         );
         self.last_galley = Some(galley.clone());
