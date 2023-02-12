@@ -6,7 +6,7 @@ use crate::{
     callback::{AccessorRegistry, Callback, CallbackDispatch},
     input::InputState,
     memory::Memory,
-    painter::Painter,
+    painter::{ExtraFont, Painter},
     theme::Theme,
     widget::DynWidget,
     widget_id::WidgetId,
@@ -23,9 +23,9 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(screen_size: Vec2) -> Self {
+    pub fn new(screen_size: Vec2, extra_fonts: Vec<ExtraFont>) -> Self {
         Self {
-            painter: RefCell::new(Painter::new()),
+            painter: RefCell::new(Painter::new(extra_fonts)),
             input_state: InputState::new(screen_size),
             dispatched_callbacks: Default::default(),
             accessor_registry: Default::default(),

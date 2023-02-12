@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use epaint::{
-    text::FontDefinitions, CircleShape, ClippedShape, Color32, CubicBezierShape, FontId, Fonts,
-    Galley, Pos2, Rect, RectShape, Rounding, Stroke, TextShape, Vec2,
+    text::{FontData, FontDefinitions},
+    CircleShape, ClippedShape, Color32, CubicBezierShape, FontId, Fonts, Galley, Pos2, Rect,
+    RectShape, Rounding, Stroke, TextShape, Vec2, FontFamily,
 };
 
 pub struct Painter {
@@ -37,15 +38,34 @@ pub struct GueeTextShape {
     pub angle: f32,
 }
 
+pub struct ExtraFont {
+    pub font_family: FontFamily,
+    pub name: &'static str,
+    pub data: &'static [u8],
+}
+
 #[allow(clippy::new_without_default)]
 impl Painter {
-    pub fn new() -> Self {
+    pub fn new(extra_fonts: Vec<ExtraFont>) -> Self {
+        let mut font_defs = FontDefinitions::default();
+        for (i, extra_font) in extra_fonts.into_iter().enumerate() {
+            font_defs.font_data.insert(
+                extra_font.name.to_owned(),
+                FontData::from_static(extra_font.data),
+            );
+            font_defs
+                .families
+                .entry(epaint::FontFamily::Proportional)
+                .or_default()
+                .insert(i, extra_font.name.to_string())
+        }
+
         Self {
             clip_rect: Rect::from_min_max(Pos2::ZERO, Pos2::ZERO),
             text_color: Color32::BLACK,
             shapes: Vec::new(),
             transform: TranslateScale::identity(),
-            fonts: Fonts::new(1.0, 1024, FontDefinitions::default()),
+            fonts: Fonts::new(1.0, 1024, font_defs),
         }
     }
 
