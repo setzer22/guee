@@ -140,13 +140,13 @@ impl Widget for BoxContainer {
 
         Layout::with_children(
             widget_id,
-            Vec2::new(
-                cross_space,
+            axis.new_vec2(
                 children
                     .last()
                     // The rightmost or bottommost position, depending on axis
                     .map(|x| x.bounds.max.to_vec2().main_dir(axis))
                     .unwrap_or(0.0),
+                cross_space,
             ),
             children,
         )

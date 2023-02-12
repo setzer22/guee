@@ -58,7 +58,7 @@ impl Widget for TextEdit {
         self.galley = Some(galley.clone());
 
         let height = match size_hints.height {
-            SizeHint::Shrink => galley.bounds().width() + 2.0 * padding.y,
+            SizeHint::Shrink => galley.bounds().height() + 2.0 * padding.y,
             SizeHint::Fill => available.y,
         };
 
@@ -143,7 +143,9 @@ impl Widget for TextEdit {
                     if !self.contents.is_empty() {
                         let mut contents = self.contents.clone();
                         contents.drain(self.contents.len() - 1..);
-                        ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
+                        if let Some(on_changed) = self.on_changed.take() {
+                            ctx.dispatch_callback(on_changed, contents);
+                        }
                     }
                 }
                 _ => {}
