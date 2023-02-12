@@ -5,6 +5,7 @@ use syn::{ext::IdentExt, parenthesized, parse::Parse, parse2, Expr, PathArgument
 #[derive(Default, Debug)]
 struct BuilderStructAnnotation {
     is_widget: bool,
+    skip_new: bool,
 }
 
 impl Parse for BuilderStructAnnotation {
@@ -14,11 +15,18 @@ impl Parse for BuilderStructAnnotation {
 
         let mut ann = BuilderStructAnnotation::default();
         if contents.peek(Ident::peek_any) {
-            let id = contents.parse::<Ident>()?;
-            if id == "widget" {
-                ann.is_widget = true;
-            } else {
-                return Err(syn::Error::new(id.span(), "Unsupported annotation: '{id}'"));
+            loop {
+                let id = contents.parse::<Ident>()?;
+                if id == "widget" {
+                    ann.is_widget = true;
+                } else if id == "skip_new" {
+                    ann.skip_new = true;
+                } else {
+                    return Err(syn::Error::new(id.span(), "Unsupported annotation: '{id}'"));
+                }
+                if contents.parse::<Token![,]>().is_err() {
+                    break
+                }
             }
         }
         Ok(ann)
@@ -203,11 +211,15 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
         }
     });
 
-    let constructor = quote! {
-        pub fn new(#(#mandatory_field_signatures),*) -> Self {
-            Self {
-                #(#mandatory_field_idents),*,
-                #(#default_initializers),*
+    let constructor = if struct_annotation.skip_new {
+        quote! {}
+    } else {
+        quote! {
+            pub fn new(#(#mandatory_field_signatures),*) -> Self {
+                Self {
+                    #(#mandatory_field_idents),*,
+                    #(#default_initializers),*
+                }
             }
         }
     };

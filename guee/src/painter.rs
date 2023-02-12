@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use epaint::{
     text::{FontDefinitions, LayoutJob},
-    CircleShape, ClippedShape, Color32, FontId, Fonts, Galley, Pos2, Rect, RectShape, Rounding,
-    Stroke, TextShape, Vec2,
+    CircleShape, ClippedShape, Color32, CubicBezierShape, FontId, Fonts, Galley, Pos2, Rect,
+    RectShape, Rounding, Stroke, TextShape, Vec2,
 };
 
 pub struct Painter {
@@ -151,6 +151,44 @@ impl Painter {
                 angle,
             }),
         ));
+    }
+
+    pub fn line_segment(&mut self, points: [Pos2; 2], stroke: Stroke) {
+        let mut points = points;
+        let mut stroke = stroke;
+        for point in &mut points {
+            *point = self.transform.transform_point(*point);
+        }
+        stroke.width = self.transform.transform_scalar(stroke.width);
+
+        self.shapes.push(ClippedShape(
+            self.clip_rect,
+            epaint::Shape::LineSegment { points, stroke },
+        ))
+    }
+
+    pub fn cubic_bezier(&mut self, bezier_shape: CubicBezierShape) {
+        let CubicBezierShape {
+            mut points,
+            closed,
+            fill,
+            mut stroke,
+        } = bezier_shape;
+
+        for point in &mut points {
+            *point = self.transform.transform_point(*point);
+        }
+        stroke.width = self.transform.transform_scalar(stroke.width);
+
+        self.shapes.push(ClippedShape(
+            self.clip_rect,
+            epaint::Shape::CubicBezier(CubicBezierShape {
+                points,
+                closed,
+                fill,
+                stroke,
+            }),
+        ))
     }
 }
 

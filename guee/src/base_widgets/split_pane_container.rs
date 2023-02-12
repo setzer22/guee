@@ -160,7 +160,6 @@ impl Widget for SplitPaneContainer {
         for event in events {
             if let Event::MouseReleased(MouseButton::Primary) = event {
                 state.dragging = false;
-                status = EventStatus::Consumed;
             }
         }
         if state.dragging {
