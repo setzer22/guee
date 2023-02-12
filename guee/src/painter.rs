@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use epaint::{
-    text::{FontDefinitions, LayoutJob},
-    CircleShape, ClippedShape, Color32, CubicBezierShape, FontId, Fonts, Galley, Pos2, Rect,
-    RectShape, Rounding, Stroke, TextShape, Vec2,
+    text::FontDefinitions, CircleShape, ClippedShape, Color32, CubicBezierShape, FontId, Fonts,
+    Galley, Pos2, Rect, RectShape, Rounding, Stroke, TextShape, Vec2,
 };
 
 pub struct Painter {
@@ -38,6 +37,7 @@ pub struct GueeTextShape {
     pub angle: f32,
 }
 
+#[allow(clippy::new_without_default)]
 impl Painter {
     pub fn new() -> Self {
         Self {

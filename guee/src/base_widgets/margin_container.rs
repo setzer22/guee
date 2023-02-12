@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use epaint::{Color32, Pos2, Stroke, Vec2, RectShape, Rounding};
 use guee_derives::Builder;
 

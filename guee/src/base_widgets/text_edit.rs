@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use epaint::{
-    text::cursor::Cursor, Color32, FontId, Galley, Pos2, RectShape, Rounding, Stroke, TextShape,
+    text::cursor::Cursor, Color32, FontId, Pos2, RectShape, Rounding, Stroke,
     Vec2,
 };
 use guee_derives::Builder;

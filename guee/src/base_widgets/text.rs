@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     context::Context,
     input::{Event, EventStatus},
@@ -57,7 +55,7 @@ impl Widget for Text {
     }
 
     fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        let galley = self.ensure_galley(&ctx, available.x);
+        let galley = self.ensure_galley(ctx, available.x);
         galley.bounds().size()
     }
 

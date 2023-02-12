@@ -1,14 +1,12 @@
 use std::{any::Any, cell::RefCell, ops::DerefMut};
 
-use epaint::{
-    text::FontDefinitions, ClippedPrimitive, Fonts, Pos2, Rect, TessellationOptions, Vec2,
-};
+use epaint::{ClippedPrimitive, Pos2, Rect, TessellationOptions, Vec2};
 
 use crate::{
     callback::{AccessorRegistry, Callback, CallbackDispatch},
     input::InputState,
     memory::Memory,
-    painter::{Painter, TranslateScale},
+    painter::Painter,
     theme::Theme,
     widget::DynWidget,
     widget_id::WidgetId,
