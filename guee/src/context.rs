@@ -3,7 +3,7 @@ use std::{any::Any, cell::RefCell, ops::DerefMut};
 use epaint::{ClippedPrimitive, Pos2, Rect, TessellationOptions, Vec2};
 
 use crate::{
-    callback::{AccessorRegistry, Callback, CallbackDispatch},
+    callback::{AccessorRegistry, Callback, DispatchedCallbackStorage, DispatchedExternalCallback},
     input::InputState,
     memory::Memory,
     painter::{ExtraFont, Painter},
@@ -16,7 +16,7 @@ pub struct Context {
     pub painter: RefCell<Painter>,
     pub input_state: InputState,
     pub accessor_registry: AccessorRegistry,
-    pub dispatched_callbacks: RefCell<Vec<CallbackDispatch>>,
+    pub dispatched_callbacks: RefCell<DispatchedCallbackStorage>,
     pub memory: Memory,
     pub focus: RefCell<Option<WidgetId>>,
     pub theme: RefCell<Theme>,
@@ -58,9 +58,9 @@ impl Context {
                 &events,
             );
         widget.widget.draw(self, &layout);
-        for callback in self.dispatched_callbacks.borrow_mut().drain(..) {
-            self.accessor_registry.invoke_callback(state, callback);
-        }
+        self.dispatched_callbacks
+            .borrow_mut()
+            .end_frame(state, &self.accessor_registry);
         self.input_state.end_frame();
     }
 
@@ -77,9 +77,15 @@ impl Context {
     }
 
     pub fn dispatch_callback<P: 'static>(&self, c: Callback<P>, payload: P) {
-        self.dispatched_callbacks
-            .borrow_mut()
-            .push(CallbackDispatch::new(c, payload))
+        match c {
+            Callback::External(ext) => self
+                .dispatched_callbacks
+                .borrow_mut()
+                .push(DispatchedExternalCallback::new(ext, payload)),
+            Callback::Internal { token } => {
+                todo!()
+            }
+        }
     }
 
     pub fn request_focus(&self, widget_id: WidgetId) {
