@@ -159,4 +159,7 @@ impl Widget for DragValue {
     // - When the widget is not focused, the string contents are overwritten
     // by the provided float value. The on_event code for the TextEdit is
     // not even run. Instead, we handle drag events here.
+    //
+    // We currently have the first mode working, but the second mode
+    // (non-focused widget) is not implemented yet.
 }
