@@ -22,18 +22,18 @@ pub mod text_buffer;
 #[derive(Builder)]
 #[builder(widget)]
 pub struct TextEdit {
-    id: IdGen,
-    contents: String,
+    pub id: IdGen,
+    pub contents: String,
     #[builder(default)]
-    padding: Vec2,
+    pub padding: Vec2,
     #[builder(default)]
-    layout_hints: LayoutHints,
+    pub layout_hints: LayoutHints,
     #[builder(skip)]
-    galley: Option<GueeGalley>,
+    pub galley: Option<GueeGalley>,
     #[builder(callback)]
-    on_changed: Option<Callback<String>>,
+    pub on_changed: Option<Callback<String>>,
     #[builder(default = 100.0)]
-    min_width: f32,
+    pub min_width: f32,
 }
 
 #[derive(Default)]

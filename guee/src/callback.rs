@@ -283,10 +283,13 @@ impl DispatchedCallbackStorage {
 
     /// After an internal callback is fired (and before the end of the frame),
     /// call this function to obtain the callback result via its `PollToken`.
-    pub fn poll_callback_result<P: 'static>(&self, tk: PollToken<P>) -> Option<&P> {
+    ///
+    /// Note that calling this function will remove the polled value from
+    /// storage, and subsequent calls will return None.
+    pub fn poll_callback_result<P: 'static>(&mut self, tk: PollToken<P>) -> Option<P> {
         self.internal
-            .get(&tk.as_raw())
-            .map(|x| x.downcast_ref::<P>().expect("Failed downcast"))
+            .remove(&tk.as_raw())
+            .map(|x| *x.downcast::<P>().expect("Failed downcast"))
     }
 }
 
@@ -352,7 +355,6 @@ mod tests {
         assert_eq!(storage.poll_callback_result(tk).unwrap(), "TestString");
     }
 }
-
 
 // Boilerplate: Rust doesn't allow derives with PhantomData
 

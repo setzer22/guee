@@ -83,6 +83,7 @@ impl Context {
         )
     }
 
+    #[track_caller]
     pub fn dispatch_callback<P: 'static>(&self, c: Callback<P>, payload: P) {
         self.dispatched_callbacks
             .borrow_mut()
@@ -95,16 +96,10 @@ impl Context {
             .create_internal_callback()
     }
 
-    pub fn poll_callback_result<P: 'static>(
-        &self,
-        tk: PollToken<P>,
-    ) -> Option<impl Deref<Target = P> + '_> {
-        let guard = self.dispatched_callbacks.borrow();
-        if guard.poll_callback_result(tk).is_some() {
-            Some(Ref::map(guard, |x| x.poll_callback_result(tk).unwrap()))
-        } else {
-            None
-        }
+    pub fn poll_callback_result<P: 'static>(&self, tk: PollToken<P>) -> Option<P> {
+        self.dispatched_callbacks
+            .borrow_mut()
+            .poll_callback_result(tk)
     }
 
     pub fn request_focus(&self, widget_id: WidgetId) {
