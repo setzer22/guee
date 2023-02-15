@@ -12,7 +12,7 @@ use std::{
 /// The token is a cheaply copyable handle and can be freely shared or stored
 /// around, but one should be careful to store them across frames because
 /// callback data is removed from previous frames.
-#[derive(Clone, Copy)]
+// #[derive(Copy, Clone)] <- see below
 pub struct PollToken<T> {
     token: usize,
     _phantom: PhantomData<T>,
@@ -242,6 +242,9 @@ pub struct DispatchedCallbackStorage {
     /// Maps poll tokens to the corresponding (type-erased) payload data
     /// returned by the function. Cleared at the end of the frame.
     pub internal: HashMap<RawPollToken, Box<dyn Any>>,
+    /// The integer id for the next PollToken to be returned. Reset at the end
+    /// of the frame.
+    pub next_token: usize,
 }
 
 impl DispatchedCallbackStorage {
@@ -251,11 +254,7 @@ impl DispatchedCallbackStorage {
                 .external
                 .push(DispatchedExternalCallback::new(ext, payload)),
             Callback::Internal { token } => {
-                // WIP: Almost done with the refactor, but a few stuff remaining:
-                // - [ ] Fix the tests below, add tests for internal callbacks
-                // - [ ] Add a constructor fn fo create internal callbacks.
-                // - [ ] Decide how the poll tokens are going to be allocated. Maybe via the context?
-                self.internal.insert(token, payload);
+                self.internal.insert(token.as_raw(), Box::new(payload));
             }
         }
     }
@@ -267,16 +266,33 @@ impl DispatchedCallbackStorage {
         for callback in self.external.drain(..) {
             accessor_registry.invoke_callback(state, callback);
         }
+        self.next_token = 0;
+    }
+
+    /// Creates an internal callback, to be dispatched later via
+    /// `dispatch_callback`. Returns both the callback object and the
+    /// `PollToken` that calling code can use to fetch the result.
+    pub fn create_internal_callback<P: 'static>(&mut self) -> (Callback<P>, PollToken<P>) {
+        let token = PollToken::<P> {
+            token: self.next_token,
+            _phantom: Default::default(),
+        };
+        self.next_token += 1;
+        (Callback::Internal { token }, token)
+    }
+
+    /// After an internal callback is fired (and before the end of the frame),
+    /// call this function to obtain the callback result via its `PollToken`.
+    pub fn poll_callback_result<P: 'static>(&self, tk: PollToken<P>) -> Option<&P> {
+        self.internal
+            .get(&tk.as_raw())
+            .map(|x| x.downcast_ref::<P>().expect("Failed downcast"))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::any::{Any, TypeId};
-
-    use crate::callback::{Callback, DispatchedExternalCallback};
-
-    use super::AccessorRegistry;
+    use super::*;
 
     #[test]
     fn test_accessor_regitry() {
@@ -317,15 +333,36 @@ mod tests {
         assert_eq!(state.bar.x, 42.0);
         assert_eq!(state.foo.baz.y, 9.99);
 
-        let cb = Callback::from_fn(|bar: &mut Bar, _| bar.x = 123.4);
-        let cd = DispatchedExternalCallback::new(cb, ());
-        registry.invoke_callback(&mut state, cd);
+        let mut storage = DispatchedCallbackStorage::default();
 
-        let cb = Callback::from_fn(|baz: &mut Baz, _| baz.y = 432.1);
-        let cd = DispatchedExternalCallback::new(cb, ());
-        registry.invoke_callback(&mut state, cd);
+        storage.dispatch_callback(Callback::from_fn(|bar: &mut Bar, _| bar.x = 123.4), ());
+        storage.dispatch_callback(Callback::from_fn(|baz: &mut Baz, _| baz.y = 432.1), ());
+        storage.end_frame(&mut state, &registry);
 
         assert_eq!(state.bar.x, 123.4);
         assert_eq!(state.foo.baz.y, 432.1);
     }
+
+    #[test]
+    fn test_internal_callbacks() {
+        let mut storage = DispatchedCallbackStorage::default();
+        let (cb, tk) = storage.create_internal_callback();
+        assert_eq!(storage.poll_callback_result(tk), None);
+        storage.dispatch_callback(cb, "TestString".to_string());
+        assert_eq!(storage.poll_callback_result(tk).unwrap(), "TestString");
+    }
 }
+
+
+// Boilerplate: Rust doesn't allow derives with PhantomData
+
+impl<P> Clone for PollToken<P> {
+    fn clone(&self) -> Self {
+        Self {
+            token: self.token.clone(),
+            _phantom: self._phantom.clone(),
+        }
+    }
+}
+
+impl<P> Copy for PollToken<P> {}

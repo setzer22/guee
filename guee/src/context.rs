@@ -1,9 +1,16 @@
-use std::{any::Any, cell::RefCell, ops::DerefMut};
+use std::{
+    any::Any,
+    cell::{Ref, RefCell},
+    ops::{Deref, DerefMut},
+};
 
 use epaint::{ClippedPrimitive, Pos2, Rect, TessellationOptions, Vec2};
 
 use crate::{
-    callback::{AccessorRegistry, Callback, DispatchedCallbackStorage, DispatchedExternalCallback},
+    callback::{
+        AccessorRegistry, Callback, DispatchedCallbackStorage, DispatchedExternalCallback,
+        PollToken,
+    },
     input::InputState,
     memory::Memory,
     painter::{ExtraFont, Painter},
@@ -77,14 +84,26 @@ impl Context {
     }
 
     pub fn dispatch_callback<P: 'static>(&self, c: Callback<P>, payload: P) {
-        match c {
-            Callback::External(ext) => self
-                .dispatched_callbacks
-                .borrow_mut()
-                .push(DispatchedExternalCallback::new(ext, payload)),
-            Callback::Internal { token } => {
-                todo!()
-            }
+        self.dispatched_callbacks
+            .borrow_mut()
+            .dispatch_callback(c, payload);
+    }
+
+    pub fn create_internal_callback<P: 'static>(&self) -> (Callback<P>, PollToken<P>) {
+        self.dispatched_callbacks
+            .borrow_mut()
+            .create_internal_callback()
+    }
+
+    pub fn poll_callback_result<P: 'static>(
+        &self,
+        tk: PollToken<P>,
+    ) -> Option<impl Deref<Target = P> + '_> {
+        let guard = self.dispatched_callbacks.borrow();
+        if guard.poll_callback_result(tk).is_some() {
+            Some(Ref::map(guard, |x| x.poll_callback_result(tk).unwrap()))
+        } else {
+            None
         }
     }
 
