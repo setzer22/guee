@@ -106,6 +106,15 @@ impl Context {
         *self.focus.borrow_mut() = Some(widget_id);
     }
 
+    pub fn release_focus(&self, widget_id: WidgetId) {
+        let mut focus = self.focus.borrow_mut();
+        if let Some(id) = *focus {
+            if id == widget_id {
+                *focus = None;
+            }
+        }
+    }
+
     pub fn get_focus(&self) -> Option<WidgetId> {
         *self.focus.borrow()
     }

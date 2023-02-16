@@ -129,7 +129,7 @@ impl Widget for TextEdit {
 
         for event in events {
             match event {
-                Event::MousePressed(MouseButton::Primary) => {
+                Event::MouseReleased(MouseButton::Primary) => {
                     if layout.bounds.contains(cursor_position) {
                         ctx.request_focus(layout.widget_id);
                     }
@@ -147,6 +147,9 @@ impl Widget for TextEdit {
                             ctx.dispatch_callback(on_changed, contents);
                         }
                     }
+                }
+                Event::KeyPressed(VirtualKeyCode::Escape) if is_focused => {
+                    ctx.release_focus(layout.widget_id);
                 }
                 _ => {}
             }

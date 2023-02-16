@@ -1,4 +1,4 @@
-use epaint::{Color32, Stroke};
+use epaint::{Color32, Stroke, Vec2};
 
 pub trait Color32Ext: Sized + Copy {
     fn get_color(&mut self) -> &mut Color32;
@@ -26,5 +26,19 @@ impl Color32Ext for Color32 {
 impl Color32Ext for Stroke {
     fn get_color(&mut self) -> &mut Color32 {
         &mut self.color
+    }
+}
+
+pub trait Vec2Ext {
+    fn get_vec2(&self) -> Vec2;
+    fn rem_euclid(&self, rhs: f32) -> Vec2 {
+        let v = self.get_vec2();
+        Vec2::new(v.x.rem_euclid(rhs), v.y.rem_euclid(rhs))
+    }
+}
+
+impl Vec2Ext for Vec2 {
+    fn get_vec2(&self) -> Vec2 {
+        *self
     }
 }
