@@ -1,4 +1,6 @@
-use epaint::{Pos2, Vec2};
+use std::any::{TypeId, Any};
+
+use epaint::{Pos2, Vec2, ahash::HashMap};
 use guee_derives::Builder;
 
 use crate::{extension_traits::Vec2Ext, input::MouseButton, prelude::*};
@@ -96,8 +98,8 @@ impl Widget for DragValue {
     }
 
     fn layout_hints(&self) -> LayoutHints {
-        let this: &dyn Widget = self;
-        this.layout_hints()
+        let text_edit: &dyn Widget = &self.text_edit;
+        text_edit.layout_hints()
     }
 
     fn on_event(
