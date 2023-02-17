@@ -30,6 +30,11 @@ pub struct Context {
 }
 
 impl Context {
+    /// Creates a new [`Context`]. The context object holds all the necessary
+    /// state to render a UI using `guee`.o
+    ///
+    /// The Context object makes use of interior mutability. Many of its &self
+    /// methods will modify its internal state.
     pub fn new(screen_size: Vec2, extra_fonts: Vec<ExtraFont>) -> Self {
         Self {
             painter: RefCell::new(Painter::new(extra_fonts)),
@@ -41,6 +46,9 @@ impl Context {
             theme: RefCell::new(Theme::new_empty()),
         }
     }
+
+    /// Draws the provided `widget` tree. To get the results, call
+    /// [`Context::tessellate`]
     pub fn run(&mut self, widget: &mut DynWidget, state: &mut dyn Any) {
         // Initialize a fresh painter
         self.painter.borrow_mut().prepare(
@@ -72,6 +80,8 @@ impl Context {
         self.input_state.end_frame();
     }
 
+    /// Returns a list of [`ClippedPrimitive`], suitable for rendering with an
+    /// egui-compatible renderer.
     pub fn tessellate(&mut self) -> Vec<ClippedPrimitive> {
         let mut painter = self.painter.borrow_mut();
 
@@ -84,29 +94,45 @@ impl Context {
         )
     }
 
-    #[track_caller]
+    /// Typically called from within widget code. Signals that the given
+    /// callback `c` has been fired.
     pub fn dispatch_callback<P: 'static>(&self, c: Callback<P>, payload: P) {
         self.dispatched_callbacks
             .borrow_mut()
             .dispatch_callback(c, payload);
     }
 
+    /// Typically called from within widget code. Allocates a new polling-based
+    /// internal callback and returns it, together with its `PollToken`. See
+    /// documentation on `Callback` for an explanation on internal callbacks.
     pub fn create_internal_callback<P: 'static>(&self) -> (Callback<P>, PollToken<P>) {
         self.dispatched_callbacks
             .borrow_mut()
             .create_internal_callback()
     }
 
+    /// Given the `PollToken` for a callback previously allocated via
+    /// `Context::create_internal_callback`, tries to fetch the result (if the
+    /// callback was fired) and returns it.
+    ///
+    /// Note that calling this function takes ownership of the payload object,
+    /// and subsequent calls to this function with the same token will always
+    /// return None.
     pub fn poll_callback_result<P: 'static>(&self, tk: PollToken<P>) -> Option<P> {
         self.dispatched_callbacks
             .borrow_mut()
             .poll_callback_result(tk)
     }
 
+    /// Requests focus for the given `widget_id`. The context will keep track of
+    /// this widget being the focused one until some other widget calls this
+    /// function, or the [`Context::release_focus`] function is called.
     pub fn request_focus(&self, widget_id: WidgetId) {
         *self.focus.borrow_mut() = Some(widget_id);
     }
 
+    /// Releases the focus for the given `widget_id`. If the given id does not
+    /// match the currently focused widget, does nothing.
     pub fn release_focus(&self, widget_id: WidgetId) {
         let mut focus = self.focus.borrow_mut();
         if let Some(id) = *focus {
@@ -116,14 +142,17 @@ impl Context {
         }
     }
 
+    /// Returns the currently focused widget, if any.
     pub fn get_focus(&self) -> Option<WidgetId> {
         *self.focus.borrow()
     }
 
+    /// Returns whether the given `widget_id` is the currently focused widget.
     pub fn is_focused(&self, widget_id: WidgetId) -> bool {
         self.focus.borrow().map(|x| widget_id == x).unwrap_or(false)
     }
 
+    /// Sets the theme for this context to the given `theme`.
     pub fn set_theme(&mut self, theme: Theme) {
         self.theme = RefCell::new(theme);
     }
