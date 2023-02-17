@@ -29,7 +29,7 @@ pub struct TextEdit {
     pub galley: Option<GueeGalley>,
     #[builder(callback)]
     pub on_changed: Option<Callback<String>>,
-    #[builder(default = 100.0)]
+    #[builder(default = 60.0)]
     pub min_width: f32,
 }
 
