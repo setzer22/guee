@@ -50,20 +50,26 @@ impl Button {
 }
 
 impl Widget for Button {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool,
+    ) -> Layout {
         let widget_id = self.id.resolve(parent_id);
         let padding = self.padding;
-        let mut contents_layout = self
-            .contents
-            .widget
-            .layout(ctx, widget_id, available - padding);
+        let mut contents_layout =
+            self.contents
+                .widget
+                .layout(ctx, widget_id, available - padding, force_shrink);
 
         let size_hints = self.hints.size_hints;
-        let width = match size_hints.width {
+        let width = match size_hints.width.or_force(force_shrink) {
             SizeHint::Shrink => contents_layout.bounds.width() + 2.0 * padding.x,
             SizeHint::Fill => available.x,
         };
-        let height = match size_hints.height {
+        let height = match size_hints.height.or_force(force_shrink) {
             SizeHint::Shrink => contents_layout.bounds.height() + 2.0 * padding.y,
             SizeHint::Fill => available.y,
         };
@@ -100,13 +106,6 @@ impl Widget for Button {
             },
         });
         self.contents.widget.draw(ctx, &layout.children[0]);
-    }
-
-    fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        self.contents
-            .widget
-            .min_size(ctx, available - self.padding * 2.0)
-            + self.padding * 2.0
     }
 
     fn layout_hints(&self) -> LayoutHints {

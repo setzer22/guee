@@ -7,6 +7,7 @@ use crate::{
 };
 use epaint::{Pos2, Vec2};
 use guee_derives::Builder;
+use itertools::Itertools;
 
 #[derive(Builder)]
 #[builder(widget)]
@@ -35,7 +36,13 @@ impl BoxContainer {
 }
 
 impl Widget for BoxContainer {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool,
+    ) -> Layout {
         let widget_id = self.id.resolve(parent_id);
 
         // We do this, so the rest of the code can assume child list is non-empty
@@ -43,9 +50,37 @@ impl Widget for BoxContainer {
             return Layout::leaf(widget_id, Vec2::ZERO);
         }
 
+        // Compute the child layouts as if they were all in shrink mode. This
+        // helps compute some metrics later on.
+        let shrink_child_layouts = self
+            .contents
+            .iter_mut()
+            .map(|x| x.widget.layout(ctx, parent_id, available, true))
+            .collect_vec();
+
+        // The `cross_space` is the amount of space this box container will
+        // occupy in the cross axis direction.
         let axis = self.axis;
-        let cross_space = match self.layout_hints.size_hints.cross_dir(axis) {
-            SizeHint::Shrink => self.min_size(ctx, available).cross_dir(axis),
+        let cross_space = match self
+            .layout_hints
+            .size_hints
+            .cross_dir(axis)
+            .or_force(force_shrink)
+        {
+            SizeHint::Shrink => {
+                let axis = self.axis;
+                let mut size_main = 0.0;
+                let mut size_cross = 0.0;
+
+                for c_layout in &shrink_child_layouts {
+                    let c_available = axis.vec2_add_to_main(available, -size_main);
+                    let s = c_layout.bounds.size();
+
+                    size_cross = f32::max(size_cross, s.cross_dir(axis));
+                    size_main += s.main_dir(axis);
+                }
+                size_cross
+            }
             SizeHint::Fill => available.cross_dir(axis),
         };
 
@@ -53,12 +88,16 @@ impl Widget for BoxContainer {
         let mut total_filled_weight = 0;
         let mut total_shrink_space = 0.0;
         let mut fill_child_count = 0;
-        for c in &mut self.contents {
-            match c.widget.layout_hints().size_hints.main_dir(axis) {
+        for (c, shrk) in self.contents.iter_mut().zip(&shrink_child_layouts) {
+            match c
+                .widget
+                .layout_hints()
+                .size_hints
+                .main_dir(axis)
+                .or_force(force_shrink)
+            {
                 SizeHint::Shrink => {
-                    // TODO: FIXME: This available here is not correct, some
-                    // things like text wrapping may fail to compute.
-                    total_shrink_space += c.widget.min_size(ctx, available).main_dir(axis);
+                    total_shrink_space += shrk.bounds.size().main_dir(axis);
                 }
                 SizeHint::Fill => {
                     fill_child_count += 1;
@@ -73,7 +112,13 @@ impl Widget for BoxContainer {
         let mut main_offset = 0.0;
         let mut children = vec![];
         for ch in &mut self.contents {
-            let c_available = match ch.widget.layout_hints().size_hints.main_dir(axis) {
+            let c_available = match ch
+                .widget
+                .layout_hints()
+                .size_hints
+                .main_dir(axis)
+                .or_force(force_shrink)
+            {
                 SizeHint::Shrink => {
                     axis.new_vec2(available.main_dir(axis) - main_offset, cross_space)
                 }
@@ -90,7 +135,7 @@ impl Widget for BoxContainer {
             };
             let ch_layout = ch
                 .widget
-                .layout(ctx, widget_id, c_available)
+                .layout(ctx, widget_id, c_available, force_shrink)
                 .clear_translation()
                 .translated(axis_vec * main_offset);
             main_offset += ch_layout.bounds.size().main_dir(axis) + self.separation;
@@ -99,7 +144,13 @@ impl Widget for BoxContainer {
 
         // Apply cross-axis alignment
         for (ch, ch_layout) in self.contents.iter().zip(children.iter_mut()) {
-            match ch.widget.layout_hints().size_hints.cross_dir(axis) {
+            match ch
+                .widget
+                .layout_hints()
+                .size_hints
+                .cross_dir(axis)
+                .or_force(force_shrink)
+            {
                 SizeHint::Shrink => match self.cross_align {
                     Align::Start => {}
                     Align::End => {
@@ -156,29 +207,6 @@ impl Widget for BoxContainer {
         for (child, layout) in self.contents.iter_mut().zip(layout.children.iter()) {
             child.widget.draw(ctx, layout);
         }
-    }
-
-    fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        if self.contents.is_empty() {
-            return Vec2::ZERO;
-        }
-
-        let axis = self.axis;
-        let mut size_main = 0.0;
-        let mut size_cross = 0.0;
-
-        for c in &mut self.contents {
-            //Vec2::new(available.x, available.y - size_y);
-            let c_available = axis.vec2_add_to_main(available, -size_main);
-            let s = c.widget.min_size(ctx, c_available);
-
-            size_cross = f32::max(size_cross, s.cross_dir(axis));
-            size_main += s.main_dir(axis);
-        }
-
-        let total_separation = self.separation * (self.contents.len() - 1) as f32;
-
-        axis.new_vec2(size_main + total_separation, size_cross)
     }
 
     fn layout_hints(&self) -> LayoutHints {

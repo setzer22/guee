@@ -12,3 +12,4 @@ epaint = { git = "https://github.com/emilk/egui", rev = "c58ac86935123415ea3c153
 # epaint = { path = "../../../egui/crates/epaint", features = ["bytemuck"] }
 winit = "0.27.2"
 bytemuck = "1"
+log = "0.4"

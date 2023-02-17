@@ -1,6 +1,6 @@
-use std::any::{TypeId, Any};
+use std::any::{Any, TypeId};
 
-use epaint::{Pos2, Vec2, ahash::HashMap};
+use epaint::{ahash::HashMap, Pos2, Vec2};
 use guee_derives::Builder;
 
 use crate::{extension_traits::Vec2Ext, input::MouseButton, prelude::*};
@@ -58,7 +58,13 @@ impl DragValue {
 }
 
 impl Widget for DragValue {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool,
+    ) -> Layout {
         let widget_id = self.text_edit.id.resolve(parent_id);
         let is_focused = ctx.is_focused(widget_id);
         // TODO Nitpick: Add get_or_else so we don't have to allocate twice
@@ -80,7 +86,9 @@ impl Widget for DragValue {
 
         drop(state);
 
-        let layout = self.text_edit.layout(ctx, parent_id, available);
+        let layout = self
+            .text_edit
+            .layout(ctx, parent_id, available, force_shrink);
         // Check invariants, just in case...
         assert!(
             layout.widget_id == widget_id,
@@ -91,10 +99,6 @@ impl Widget for DragValue {
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
         self.text_edit.draw(ctx, layout)
-    }
-
-    fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        self.text_edit.min_size(ctx, available)
     }
 
     fn layout_hints(&self) -> LayoutHints {

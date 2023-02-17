@@ -34,11 +34,15 @@ impl Text {
 }
 
 impl Widget for Text {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
-        Layout::leaf(
-            parent_id.with(&self.contents),
-            self.min_size(ctx, available),
-        )
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        _force_shrink: bool, // ignore, always shrinked
+    ) -> Layout {
+        let galley = self.ensure_galley(ctx, available.x);
+        Layout::leaf(parent_id.with(&self.contents), galley.bounds().size())
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
@@ -52,11 +56,6 @@ impl Widget for Text {
             underline: Stroke::NONE,
             angle: 0.0,
         });
-    }
-
-    fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        let galley = self.ensure_galley(ctx, available.x);
-        galley.bounds().size()
     }
 
     fn layout_hints(&self) -> LayoutHints {

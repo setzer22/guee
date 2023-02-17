@@ -33,14 +33,20 @@ impl ColoredBox {
 }
 
 impl Widget for ColoredBox {
-    fn layout(&mut self, _ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+    fn layout(
+        &mut self,
+        _ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool,
+    ) -> Layout {
         let widget_id = self.id.resolve(parent_id);
         let size_hints = self.hints.size_hints;
-        let width = match size_hints.width {
+        let width = match size_hints.width.or_force(force_shrink) {
             SizeHint::Shrink => self.min_size.x,
             SizeHint::Fill => available.x,
         };
-        let height = match size_hints.height {
+        let height = match size_hints.height.or_force(force_shrink) {
             SizeHint::Shrink => self.min_size.y,
             SizeHint::Fill => available.y,
         };
@@ -55,10 +61,6 @@ impl Widget for ColoredBox {
             fill: self.fill,
             stroke: self.stroke,
         });
-    }
-
-    fn min_size(&mut self, _ctx: &Context, _available: Vec2) -> Vec2 {
-        self.min_size
     }
 
     fn layout_hints(&self) -> LayoutHints {

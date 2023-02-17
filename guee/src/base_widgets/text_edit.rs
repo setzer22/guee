@@ -1,7 +1,4 @@
-use epaint::{
-    text::cursor::Cursor, Color32, FontId, Pos2, RectShape, Rounding, Stroke,
-    Vec2,
-};
+use epaint::{text::cursor::Cursor, Color32, FontId, Pos2, RectShape, Rounding, Stroke, Vec2};
 use guee_derives::Builder;
 use winit::event::VirtualKeyCode;
 
@@ -42,19 +39,28 @@ pub struct TextEditUiState {
 }
 
 impl Widget for TextEdit {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool,
+    ) -> Layout {
         let widget_id = self.id.resolve(parent_id);
         let padding = self.padding;
 
         let size_hints = self.layout_hints.size_hints;
-        let width = match size_hints.width {
+        let width = match size_hints.width.or_force(force_shrink) {
             SizeHint::Shrink => self.min_width + 2.0 * padding.x,
             SizeHint::Fill => available.x,
         };
 
-        let galley = ctx
-            .painter()
-            .galley(self.contents.clone(), FontId::proportional(14.0), width);
+        let galley = ctx.painter().galley(
+            self.contents.clone(),
+            FontId::proportional(14.0),
+            // The text in a text edit does not wrap at a certain width.
+            f32::INFINITY,
+        );
         self.galley = Some(galley.clone());
 
         let height = match size_hints.height {
@@ -90,7 +96,8 @@ impl Widget for TextEdit {
 
         if focused {
             let cursor = galley.epaint_galley.cursor_end_of_row(&ui_state.cursor);
-            let cursor_rect = galley.epaint_galley
+            let cursor_rect = galley
+                .epaint_galley
                 .pos_from_cursor(&cursor)
                 .expand2(Vec2::new(1.0, 0.0))
                 .translate(text_bounds.left_top().to_vec2());
@@ -101,13 +108,6 @@ impl Widget for TextEdit {
                 stroke: Stroke::NONE,
             });
         }
-    }
-
-    fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        let mut b = Button::with_label(self.contents.clone())
-            .padding(self.padding)
-            .hints(self.layout_hints);
-        b.min_size(ctx, available)
     }
 
     fn layout_hints(&self) -> LayoutHints {

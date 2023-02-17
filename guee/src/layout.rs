@@ -36,6 +36,27 @@ pub enum SizeHint {
     Fill,
 }
 
+impl SizeHint {
+    pub fn ignore_force_warning(struct_name: &str) {
+        log::warn!(
+            concat!(
+                "{0} was requested to layout with force_shrink enabled. ",
+                "It is an error to use {0} inside another flex container, ",
+                "this request will be ignored."
+            ),
+            struct_name
+        );
+    }
+
+    pub fn or_force(self, force_shrink: bool) -> Self {
+        if force_shrink {
+            Self::Shrink
+        } else {
+            self
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SizeHints {
     pub width: SizeHint,

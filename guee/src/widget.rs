@@ -8,9 +8,8 @@ use crate::{
 };
 
 pub trait Widget {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout;
+    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2, force_shrink: bool) -> Layout;
     fn draw(&mut self, ctx: &Context, layout: &Layout);
-    fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2;
     fn layout_hints(&self) -> LayoutHints;
     fn on_event(
         &mut self,

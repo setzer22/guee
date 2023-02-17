@@ -52,6 +52,7 @@ impl Context {
             self,
             WidgetId::new("__ROOT__"),
             self.input_state.screen_size,
+            false,
         );
         layout.to_absolute(Vec2::ZERO);
         let events = std::mem::take(&mut self.input_state.ev_buffer);

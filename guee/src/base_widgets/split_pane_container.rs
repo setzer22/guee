@@ -1,4 +1,4 @@
-use std::ops::DerefMut;
+use std::{ops::DerefMut, any::type_name};
 
 use epaint::{Color32, Pos2, Rect, RectShape, Rounding, Stroke, Vec2};
 use guee_derives::Builder;
@@ -7,7 +7,7 @@ use crate::{
     context::Context,
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints},
-    prelude::{Axis, AxisDirections, StyledWidget},
+    prelude::{Axis, AxisDirections, StyledWidget, SizeHint},
     widget::{DynWidget, Widget},
     widget_id::{IdGen, WidgetId},
 };
@@ -77,7 +77,17 @@ impl SplitPaneContainer {
 }
 
 impl Widget for SplitPaneContainer {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool, // ignored, always expanded.
+    ) -> Layout {
+        if force_shrink {
+            SizeHint::ignore_force_warning(type_name::<Self>());
+        }
+
         let widget_id = self.id.resolve(parent_id);
         let axis = self.axis;
         let frac = self.get_frac(widget_id, ctx);
@@ -90,13 +100,13 @@ impl Widget for SplitPaneContainer {
         let left_layout = self
             .left_widget
             .widget
-            .layout(ctx, widget_id, available_left);
+            .layout(ctx, widget_id, available_left, false);
 
         let offset = available.main_dir(axis) * frac + self.handle_width;
         let right_layout = self
             .right_widget
             .widget
-            .layout(ctx, widget_id, available_right)
+            .layout(ctx, widget_id, available_right, false)
             .translated(axis.new_vec2(offset, 0.0));
 
         Layout::with_children(widget_id, available, vec![left_layout, right_layout])
@@ -122,10 +132,6 @@ impl Widget for SplitPaneContainer {
                 stroke: Stroke::NONE,
             });
         }
-    }
-
-    fn min_size(&mut self, _ctx: &Context, available: Vec2) -> Vec2 {
-        available
     }
 
     fn layout_hints(&self) -> LayoutHints {

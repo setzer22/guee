@@ -1,4 +1,4 @@
-use epaint::{Color32, Pos2, Stroke, Vec2, RectShape, Rounding};
+use epaint::{Color32, Pos2, RectShape, Rounding, Stroke, Vec2};
 use guee_derives::Builder;
 
 use crate::{
@@ -25,13 +25,19 @@ pub struct MarginContainer {
 }
 
 impl Widget for MarginContainer {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2) -> Layout {
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool,
+    ) -> Layout {
         let widget_id = self.id.resolve(parent_id);
 
         let mut content_layout =
             self.contents
                 .widget
-                .layout(ctx, widget_id, available - self.margin);
+                .layout(ctx, widget_id, available - self.margin, force_shrink);
         content_layout.translate(self.margin * 0.5);
         Layout::with_children(
             widget_id,
@@ -49,10 +55,6 @@ impl Widget for MarginContainer {
         });
 
         self.contents.widget.draw(ctx, &layout.children[0])
-    }
-
-    fn min_size(&mut self, ctx: &Context, available: Vec2) -> Vec2 {
-        self.contents.widget.min_size(ctx, available - self.margin) + self.margin
     }
 
     fn layout_hints(&self) -> LayoutHints {
