@@ -11,7 +11,7 @@ use crate::{
         AccessorRegistry, Callback, DispatchedCallbackStorage, DispatchedExternalCallback,
         PollToken,
     },
-    input::InputState,
+    input::{InputState, InputWidgetState},
     memory::Memory,
     painter::{ExtraFont, Painter},
     theme::Theme,
@@ -22,10 +22,10 @@ use crate::{
 pub struct Context {
     pub painter: RefCell<Painter>,
     pub input_state: InputState,
+    pub input_widget_state: RefCell<InputWidgetState>,
     pub accessor_registry: AccessorRegistry,
     pub dispatched_callbacks: RefCell<DispatchedCallbackStorage>,
     pub memory: Memory,
-    pub focus: RefCell<Option<WidgetId>>,
     pub theme: RefCell<Theme>,
 }
 
@@ -42,7 +42,7 @@ impl Context {
             dispatched_callbacks: Default::default(),
             accessor_registry: Default::default(),
             memory: Default::default(),
-            focus: Default::default(),
+            input_widget_state: Default::default(),
             theme: RefCell::new(Theme::new_empty()),
         }
     }
@@ -128,28 +128,32 @@ impl Context {
     /// this widget being the focused one until some other widget calls this
     /// function, or the [`Context::release_focus`] function is called.
     pub fn request_focus(&self, widget_id: WidgetId) {
-        *self.focus.borrow_mut() = Some(widget_id);
+        self.input_widget_state.borrow_mut().focus = Some(widget_id);
     }
 
     /// Releases the focus for the given `widget_id`. If the given id does not
     /// match the currently focused widget, does nothing.
     pub fn release_focus(&self, widget_id: WidgetId) {
-        let mut focus = self.focus.borrow_mut();
-        if let Some(id) = *focus {
+        let mut state = self.input_widget_state.borrow_mut();
+        if let Some(id) = state.focus {
             if id == widget_id {
-                *focus = None;
+                state.focus = None;
             }
         }
     }
 
     /// Returns the currently focused widget, if any.
     pub fn get_focus(&self) -> Option<WidgetId> {
-        *self.focus.borrow()
+        self.input_widget_state.borrow().focus
     }
 
     /// Returns whether the given `widget_id` is the currently focused widget.
     pub fn is_focused(&self, widget_id: WidgetId) -> bool {
-        self.focus.borrow().map(|x| widget_id == x).unwrap_or(false)
+        self.input_widget_state
+            .borrow()
+            .focus
+            .map(|x| widget_id == x)
+            .unwrap_or(false)
     }
 
     /// Sets the theme for this context to the given `theme`.

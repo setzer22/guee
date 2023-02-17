@@ -1,6 +1,8 @@
 use epaint::{ahash::HashMap, Pos2, Vec2};
 use winit::event::{ElementState, VirtualKeyCode, WindowEvent};
 
+use crate::prelude::WidgetId;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MouseButton {
     Primary,
@@ -35,22 +37,99 @@ impl EventStatus {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct ButtonState {
-    state: HashMap<MouseButton, bool>,
+#[derive(Copy, Clone, Debug, Default)]
+pub enum DragState {
+    /// The mouse button isn't pressed
+    #[default]
+    Idle,
+    /// The mouse button has been clicked, but hasn't moved enough distance
+    Clicked(Pos2),
+    /// The mouse button has moved enough with the mouse button held to register
+    /// a drag and hasn't yet been released.
+    Dragging(Pos2),
 }
 
-impl ButtonState {
+#[derive(Clone, Debug, Default)]
+pub struct ButtonState {
+    pub down: bool,
+    pub drag_state: DragState,
+    pub just_pressed: bool,
+    pub just_released: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ButtonStateMap {
+    state: HashMap<MouseButton, ButtonState>,
+}
+
+impl ButtonStateMap {
+    /// Returns whether the mouse button is currently down
     pub fn is_down(&self, button: MouseButton) -> bool {
-        *self.state.get(&button).unwrap_or(&false)
+        self.state.get(&button).map(|x| x.down).unwrap_or(false)
     }
 
-    pub fn register_down(&mut self, button: MouseButton) {
-        *self.state.entry(button).or_default() = true;
+    /// Returns whether the mouse button has been pressed during this frame.
+    pub fn is_pressed(&self, button: MouseButton) -> bool {
+        self.state
+            .get(&button)
+            .map(|x| x.just_pressed)
+            .unwrap_or(false)
     }
 
-    pub fn register_up(&mut self, button: MouseButton) {
-        *self.state.entry(button).or_default() = false;
+    /// Returns whether the mouse button has been released during this frame.
+    pub fn is_released(&self, button: MouseButton) -> bool {
+        self.state
+            .get(&button)
+            .map(|x| !x.just_released)
+            .unwrap_or(false)
+    }
+
+    /// Returns the drag start position when the current `button` has currently
+    /// started a drag event. None otherwise.
+    pub fn is_dragging(&self, button: MouseButton) -> Option<Pos2> {
+        self.state.get(&button).and_then(|x| match x.drag_state {
+            DragState::Idle => None,
+            DragState::Clicked(_) => None,
+            DragState::Dragging(pos) => Some(pos),
+        })
+    }
+
+    /// Clears current "just pressed" state. Subsequent calls to
+    /// on_mouse_pressed / on_mouse_released will activate the just_* flags
+    fn end_frame(&mut self) {
+        for (_, b_state) in self.state.iter_mut() {
+            b_state.just_pressed = false;
+            b_state.just_released = false;
+        }
+    }
+
+    fn on_mouse_pressed(&mut self, button: MouseButton, cursor_pos: Pos2) {
+        let entry = self.state.entry(button).or_default();
+        entry.just_pressed = true;
+        entry.down = true;
+        entry.drag_state = DragState::Clicked(cursor_pos);
+    }
+
+    pub fn on_mouse_released(&mut self, button: MouseButton) {
+        let entry = self.state.entry(button).or_default();
+        entry.just_released = true;
+        entry.down = false;
+        entry.drag_state = DragState::Idle;
+    }
+
+    pub fn on_mouse_moved(&mut self, cursor_pos: Pos2) {
+        const DRAG_THRESHOLD_PX: f32 = 4.0;
+        for (_, b_state) in self.state.iter_mut() {
+            match b_state.drag_state {
+                DragState::Idle => (),
+                DragState::Dragging(_) => (),
+                DragState::Clicked(pos) => {
+                    if pos.distance(cursor_pos) > DRAG_THRESHOLD_PX {
+                        b_state.drag_state = DragState::Dragging(pos);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -58,7 +137,10 @@ impl ButtonState {
 pub struct MouseState {
     pub position: Pos2,
     pub prev_position: Pos2,
-    pub button_state: ButtonState,
+    pub button_state: ButtonStateMap,
+    /// If there's a current ongoing drag event, stores the position where the
+    /// mouse started dragging from.
+    pub ongoing_drag: DragState,
 }
 
 impl MouseState {
@@ -74,6 +156,12 @@ pub struct InputState {
     pub ev_buffer: Vec<Event>,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct InputWidgetState {
+    pub focus: Option<WidgetId>,
+    pub drag: Option<WidgetId>,
+}
+
 impl InputState {
     pub fn new(screen_size: Vec2) -> Self {
         Self {
@@ -85,6 +173,7 @@ impl InputState {
 
     pub fn end_frame(&mut self) {
         self.mouse_state.prev_position = self.mouse_state.position;
+        self.mouse_state.button_state.end_frame();
     }
 
     pub fn on_winit_event(&mut self, ev: &WindowEvent) {
@@ -93,6 +182,7 @@ impl InputState {
                 let pos = Pos2::new(position.x as _, position.y as _);
                 self.ev_buffer.push(Event::MouseMoved(pos));
                 self.mouse_state.position = pos;
+                self.mouse_state.button_state.on_mouse_moved(pos);
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 let button = match button {
@@ -104,11 +194,18 @@ impl InputState {
                 match state {
                     ElementState::Pressed => {
                         self.ev_buffer.push(Event::MousePressed(button));
-                        self.mouse_state.button_state.register_down(button);
+                        self.mouse_state
+                            .button_state
+                            .on_mouse_pressed(button, self.mouse_state.position);
+                        match self.mouse_state.ongoing_drag {
+                            DragState::Idle => {}
+                            DragState::Clicked(_) => todo!(),
+                            DragState::Dragging(_) => todo!(),
+                        }
                     }
                     ElementState::Released => {
                         self.ev_buffer.push(Event::MouseReleased(button));
-                        self.mouse_state.button_state.register_up(button);
+                        self.mouse_state.button_state.on_mouse_released(button);
                     }
                 }
             }
