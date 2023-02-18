@@ -125,14 +125,13 @@ impl Widget for TextEdit {
             .memory
             .get_mut_or(layout.widget_id, TextEditUiState::default());
         let is_focused = ctx.is_focused(layout.widget_id);
+        let cursor_in_bounds = layout.bounds.contains(cursor_position);
         let _galley = self.galley.as_ref().unwrap();
 
         for event in events {
             match event {
-                Event::MouseReleased(MouseButton::Primary) => {
-                    if layout.bounds.contains(cursor_position) {
-                        ctx.request_focus(layout.widget_id);
-                    }
+                Event::MousePressed(MouseButton::Primary) if cursor_in_bounds => {
+                    ctx.request_focus(layout.widget_id);
                 }
                 Event::Text(ch) if is_focused => {
                     let mut contents = self.contents.clone();

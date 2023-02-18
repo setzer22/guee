@@ -38,7 +38,7 @@ impl EventStatus {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub enum DragState {
+pub enum ClickDragState {
     /// The mouse button isn't pressed
     #[default]
     Idle,
@@ -46,15 +46,18 @@ pub enum DragState {
     Clicked(Pos2),
     /// The mouse button has moved enough with the mouse button held to register
     /// a drag and hasn't yet been released.
-    Dragging(Pos2),
+    Dragged(Pos2),
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct ButtonState {
     pub down: bool,
-    pub drag_state: DragState,
+    pub drag_state: ClickDragState,
     pub just_pressed: bool,
     pub just_released: bool,
+    // True during the frame after which the mouse is released, without having
+    // moved a certain distance from where it was pressed (i.e. a 'click')
+    pub just_clicked: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -84,13 +87,21 @@ impl ButtonStateMap {
             .unwrap_or(false)
     }
 
+    /// Returns whether the mouse button has been clicked during this frame.
+    pub fn is_clicked(&self, button: MouseButton) -> bool {
+        self.state
+            .get(&button)
+            .map(|x| x.just_clicked)
+            .unwrap_or(false)
+    }
+
     /// Returns the drag start position when the current `button` has currently
     /// started a drag event. None otherwise.
     pub fn is_dragging(&self, button: MouseButton) -> Option<Pos2> {
         self.state.get(&button).and_then(|x| match x.drag_state {
-            DragState::Idle => None,
-            DragState::Clicked(_) => None,
-            DragState::Dragging(pos) => Some(pos),
+            ClickDragState::Idle => None,
+            ClickDragState::Clicked(_) => None,
+            ClickDragState::Dragged(pos) => Some(pos),
         })
     }
 
@@ -100,6 +111,7 @@ impl ButtonStateMap {
         for (_, b_state) in self.state.iter_mut() {
             b_state.just_pressed = false;
             b_state.just_released = false;
+            b_state.just_clicked = false;
         }
     }
 
@@ -107,25 +119,32 @@ impl ButtonStateMap {
         let entry = self.state.entry(button).or_default();
         entry.just_pressed = true;
         entry.down = true;
-        entry.drag_state = DragState::Clicked(cursor_pos);
+        entry.drag_state = ClickDragState::Clicked(cursor_pos);
     }
 
     pub fn on_mouse_released(&mut self, button: MouseButton) {
         let entry = self.state.entry(button).or_default();
         entry.just_released = true;
         entry.down = false;
-        entry.drag_state = DragState::Idle;
+        match entry.drag_state {
+            ClickDragState::Clicked(_) => {
+                entry.just_clicked = true;
+            }
+            ClickDragState::Idle => (),
+            ClickDragState::Dragged(_) => (),
+        }
+        entry.drag_state = ClickDragState::Idle;
     }
 
     pub fn on_mouse_moved(&mut self, cursor_pos: Pos2) {
         const DRAG_THRESHOLD_PX: f32 = 4.0;
         for (_, b_state) in self.state.iter_mut() {
             match b_state.drag_state {
-                DragState::Idle => (),
-                DragState::Dragging(_) => (),
-                DragState::Clicked(pos) => {
+                ClickDragState::Idle => (),
+                ClickDragState::Dragged(_) => (),
+                ClickDragState::Clicked(pos) => {
                     if pos.distance(cursor_pos) > DRAG_THRESHOLD_PX {
-                        b_state.drag_state = DragState::Dragging(pos);
+                        b_state.drag_state = ClickDragState::Dragged(pos);
                     }
                 }
             }
@@ -140,7 +159,7 @@ pub struct MouseState {
     pub button_state: ButtonStateMap,
     /// If there's a current ongoing drag event, stores the position where the
     /// mouse started dragging from.
-    pub ongoing_drag: DragState,
+    pub ongoing_drag: ClickDragState,
 }
 
 impl MouseState {
@@ -160,6 +179,11 @@ pub struct InputState {
 pub struct InputWidgetState {
     pub focus: Option<WidgetId>,
     pub drag: Option<WidgetId>,
+}
+
+pub struct SenseResponse {
+    drag: Option<Pos2>,
+    clicked: bool,
 }
 
 impl InputState {
