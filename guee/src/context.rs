@@ -11,7 +11,7 @@ use crate::{
         AccessorRegistry, Callback, DispatchedCallbackStorage, DispatchedExternalCallback,
         PollToken,
     },
-    input::{InputState, InputWidgetState},
+    input::{InputState, InputWidgetState, MouseButton},
     memory::Memory,
     painter::{ExtraFont, Painter},
     theme::Theme,
@@ -94,6 +94,11 @@ impl Context {
         )
     }
 
+    pub fn on_winit_event(&mut self, event: &winit::event::WindowEvent) {
+        self.input_state
+            .on_winit_event(self.input_widget_state.get_mut(), event);
+    }
+
     /// Typically called from within widget code. Signals that the given
     /// callback `c` has been fired.
     pub fn dispatch_callback<P: 'static>(&self, c: Callback<P>, payload: P) {
@@ -154,6 +159,38 @@ impl Context {
             .focus
             .map(|x| widget_id == x)
             .unwrap_or(false)
+    }
+
+    /// If there is an ongoing mouse drag event inside `rect`, and no other
+    /// widget claimed this drag event before, registers the given `widget_id`
+    /// as the widget that is currently handling that event.
+    ///
+    /// Successive calls to this function by the same widget will return true,
+    /// until the drag event is done (e.g. the user lifts the mouse).
+    pub fn claim_drag_event(
+        &self,
+        widget_id: WidgetId,
+        rect: Rect,
+        mouse_button: MouseButton,
+    ) -> Option<Pos2> {
+        let mut wstate = self.input_widget_state.borrow_mut();
+        let drag = self
+            .input_state
+            .mouse_state
+            .button_state
+            .is_dragging(mouse_button);
+
+        if let Some(drag_widget) = wstate.drag {
+            if drag_widget == widget_id {
+                return drag;
+            }
+        } else if let Some(drag_pos) = drag {
+            if rect.contains(drag_pos) {
+                wstate.drag = Some(widget_id);
+                return Some(drag_pos);
+            }
+        }
+        None
     }
 
     /// Sets the theme for this context to the given `theme`.

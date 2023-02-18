@@ -176,7 +176,7 @@ impl InputState {
         self.mouse_state.button_state.end_frame();
     }
 
-    pub fn on_winit_event(&mut self, ev: &WindowEvent) {
+    pub fn on_winit_event(&mut self, widget_state: &mut InputWidgetState, ev: &WindowEvent) {
         match ev {
             WindowEvent::CursorMoved { position, .. } => {
                 let pos = Pos2::new(position.x as _, position.y as _);
@@ -197,15 +197,11 @@ impl InputState {
                         self.mouse_state
                             .button_state
                             .on_mouse_pressed(button, self.mouse_state.position);
-                        match self.mouse_state.ongoing_drag {
-                            DragState::Idle => {}
-                            DragState::Clicked(_) => todo!(),
-                            DragState::Dragging(_) => todo!(),
-                        }
                     }
                     ElementState::Released => {
                         self.ev_buffer.push(Event::MouseReleased(button));
                         self.mouse_state.button_state.on_mouse_released(button);
+                        widget_state.drag = None;
                     }
                 }
             }
@@ -228,14 +224,6 @@ impl InputState {
                 }
             }
             WindowEvent::ReceivedCharacter(ch) => {
-                // WIP: This is getting very complex very fast. Would it make
-                // sense to bring egui's input management code here? At the very
-                // least, their egui integration code in egui-winit looks like
-                // something to take inspiration from.
-                //
-                // WIP2: There's also an issue with on_event. It currently gets
-                // called once for each event, whereas it would be better if
-                // it's called with all events at the same time.
                 if is_printable_char(*ch) {
                     self.ev_buffer.push(Event::Text(*ch));
                 }

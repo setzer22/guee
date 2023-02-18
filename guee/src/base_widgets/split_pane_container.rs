@@ -1,4 +1,4 @@
-use std::{ops::DerefMut, any::type_name};
+use std::{any::type_name, ops::DerefMut};
 
 use epaint::{Color32, Pos2, Rect, RectShape, Rounding, Stroke, Vec2};
 use guee_derives::Builder;
@@ -7,7 +7,7 @@ use crate::{
     context::Context,
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints},
-    prelude::{Axis, AxisDirections, StyledWidget, SizeHint},
+    prelude::{Axis, AxisDirections, SizeHint, StyledWidget},
     widget::{DynWidget, Widget},
     widget_id::{IdGen, WidgetId},
 };
@@ -36,7 +36,6 @@ pub struct SplitPaneContainerStyle {
 
 pub struct SplitPaneContainerState {
     frac: f32,
-    dragging: bool,
 }
 
 impl SplitPaneContainer {
@@ -61,7 +60,6 @@ impl SplitPaneContainer {
                 widget_id,
                 SplitPaneContainerState {
                     frac: self.default_frac,
-                    dragging: false,
                 },
             )
             .frac
@@ -149,26 +147,18 @@ impl Widget for SplitPaneContainer {
     ) -> EventStatus {
         let mut state = self.get_mut_state(layout.widget_id, ctx);
 
-        let mouse_in_handle = self
-            .resize_handle_rect(state.frac, layout.bounds)
-            .contains(cursor_position);
+        let handle_rect = self.resize_handle_rect(state.frac, layout.bounds);
 
         let mut status = EventStatus::Ignored;
-        if mouse_in_handle {
-            for event in events {
-                if let Event::MousePressed(MouseButton::Primary) = event {
-                    state.dragging = true;
-                    status = EventStatus::Consumed;
-                }
-            }
+
+        if handle_rect.contains(cursor_position) {
             self.hovered = true;
         }
-        for event in events {
-            if let Event::MouseReleased(MouseButton::Primary) = event {
-                state.dragging = false;
-            }
-        }
-        if state.dragging {
+
+        if ctx
+            .claim_drag_event(layout.widget_id, handle_rect, MouseButton::Primary)
+            .is_some()
+        {
             let delta = ctx.input_state.mouse_state.delta().main_dir(self.axis);
             let main_size = layout.bounds.size().main_dir(self.axis);
             state.frac += delta / main_size;
