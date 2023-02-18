@@ -159,7 +159,7 @@ impl Widget for SplitPaneContainer {
             .claim_drag_event(layout.widget_id, handle_rect, MouseButton::Primary)
             .is_some()
         {
-            let delta = ctx.input_state.mouse_state.delta().main_dir(self.axis);
+            let delta = ctx.input_state.mouse.delta().main_dir(self.axis);
             let main_size = layout.bounds.size().main_dir(self.axis);
             state.frac += delta / main_size;
             state.frac = state.frac.clamp(0.01, 0.99);

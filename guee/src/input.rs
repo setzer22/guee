@@ -64,8 +64,52 @@ pub struct ButtonState {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct ModifierState {
+    /// The Alt key.
+    pub alt: bool,
+    /// The Control key.
+    pub ctrl: bool,
+    /// The Shift key.
+    pub shift: bool,
+    /// The MacOs Command key. Always false on other systems.
+    pub mac_cmd: bool,
+    /// The Command key on MacOS, the Ctrl key on every other OS.
+    pub ctrl_or_command: bool,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct ButtonStateMap {
     state: HashMap<MouseButton, ButtonState>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct MouseState {
+    pub position: Pos2,
+    pub prev_position: Pos2,
+    pub button_state: ButtonStateMap,
+    /// If there's a current ongoing drag event, stores the position where the
+    /// mouse started dragging from.
+    pub ongoing_drag: ClickDragState,
+}
+
+impl MouseState {
+    pub fn delta(&self) -> Vec2 {
+        self.position - self.prev_position
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct InputState {
+    pub screen_size: Vec2,
+    pub mouse: MouseState,
+    pub modifiers: ModifierState,
+    pub ev_buffer: Vec<Event>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct InputWidgetState {
+    pub focus: Option<WidgetId>,
+    pub drag: Option<WidgetId>,
 }
 
 impl ButtonStateMap {
@@ -179,52 +223,19 @@ impl ButtonStateMap {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct MouseState {
-    pub position: Pos2,
-    pub prev_position: Pos2,
-    pub button_state: ButtonStateMap,
-    /// If there's a current ongoing drag event, stores the position where the
-    /// mouse started dragging from.
-    pub ongoing_drag: ClickDragState,
-}
-
-impl MouseState {
-    pub fn delta(&self) -> Vec2 {
-        self.position - self.prev_position
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct InputState {
-    pub screen_size: Vec2,
-    pub mouse_state: MouseState,
-    pub ev_buffer: Vec<Event>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct InputWidgetState {
-    pub focus: Option<WidgetId>,
-    pub drag: Option<WidgetId>,
-}
-
-pub struct SenseResponse {
-    drag: Option<Pos2>,
-    clicked: bool,
-}
-
 impl InputState {
     pub fn new(screen_size: Vec2) -> Self {
         Self {
             screen_size,
-            mouse_state: Default::default(),
+            mouse: Default::default(),
+            modifiers: Default::default(),
             ev_buffer: Default::default(),
         }
     }
 
     pub fn end_frame(&mut self) {
-        self.mouse_state.prev_position = self.mouse_state.position;
-        self.mouse_state.button_state.end_frame();
+        self.mouse.prev_position = self.mouse.position;
+        self.mouse.button_state.end_frame();
     }
 
     pub fn on_winit_event(&mut self, widget_state: &mut InputWidgetState, ev: &WindowEvent) {
@@ -232,8 +243,8 @@ impl InputState {
             WindowEvent::CursorMoved { position, .. } => {
                 let pos = Pos2::new(position.x as _, position.y as _);
                 self.ev_buffer.push(Event::MouseMoved(pos));
-                self.mouse_state.position = pos;
-                self.mouse_state.button_state.on_mouse_moved(pos);
+                self.mouse.position = pos;
+                self.mouse.button_state.on_mouse_moved(pos);
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 let button = match button {
@@ -245,13 +256,13 @@ impl InputState {
                 match state {
                     ElementState::Pressed => {
                         self.ev_buffer.push(Event::MousePressed(button));
-                        self.mouse_state
+                        self.mouse
                             .button_state
-                            .on_mouse_pressed(button, self.mouse_state.position);
+                            .on_mouse_pressed(button, self.mouse.position);
                     }
                     ElementState::Released => {
                         self.ev_buffer.push(Event::MouseReleased(button));
-                        self.mouse_state.button_state.on_mouse_released(button);
+                        self.mouse.button_state.on_mouse_released(button);
                         widget_state.drag = None;
                     }
                 }
@@ -281,6 +292,17 @@ impl InputState {
             }
             WindowEvent::Resized(new_size) => {
                 self.screen_size = Vec2::new(new_size.width as f32, new_size.height as f32);
+            }
+            WindowEvent::ModifiersChanged(state) => {
+                self.modifiers.alt = state.alt();
+                self.modifiers.ctrl = state.ctrl();
+                self.modifiers.shift = state.shift();
+                self.modifiers.mac_cmd = cfg!(target_os = "macos") && state.logo();
+                self.modifiers.ctrl_or_command = if cfg!(target_os = "macos") {
+                    state.logo()
+                } else {
+                    state.ctrl()
+                };
             }
             _ => (),
         }

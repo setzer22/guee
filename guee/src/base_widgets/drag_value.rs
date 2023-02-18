@@ -215,7 +215,7 @@ impl Widget for DragValue {
         if layout.bounds.contains(cursor_position)
             && ctx
                 .input_state
-                .mouse_state
+                .mouse
                 .button_state
                 .is_clicked(MouseButton::Primary)
         {
@@ -273,12 +273,11 @@ impl Widget for DragValue {
             if let Some(scale_selector) = &self.scale_selector {
                 // Check if a drag event started exactly this frame, and initialize
                 // scale selector data.
-                if dragging
-                    && ctx
-                        .input_state
-                        .mouse_state
-                        .button_state
-                        .dragging_just_started(MouseButton::Primary)
+                if ctx
+                    .input_state
+                    .mouse
+                    .button_state
+                    .dragging_just_started(MouseButton::Primary)
                 {
                     // NOTE: Only set the range if this is our first time editing this
                     // DragValue. Doing this remembers previous scale value from the
@@ -305,13 +304,13 @@ impl Widget for DragValue {
             // Handle mouse movement
             const MOUSE_AIM_PRECISION: f32 = 20.0;
 
-            let ctrl_held: bool = false;
+            let modify_scale: bool = ctx.input_state.modifiers.ctrl_or_command;
 
-            if ctrl_held {
+            if modify_scale {
                 // TODO: Do we need to handle scale in the delta?
-                state.acc_drag += ctx.input_state.mouse_state.delta().y * Vec2::Y;
+                state.acc_drag += ctx.input_state.mouse.delta().y * Vec2::Y;
             } else {
-                state.acc_drag += ctx.input_state.mouse_state.delta().x * Vec2::X;
+                state.acc_drag += ctx.input_state.mouse.delta().x * Vec2::X;
             }
 
             let discrete_increments = (state.acc_drag / MOUSE_AIM_PRECISION).floor();
@@ -320,7 +319,6 @@ impl Widget for DragValue {
             let speed = match &self.scale_selector {
                 Some(scale_selector) => {
                     let selected_row = state.selected_row.as_mut().expect("Should be initialized");
-                    dbg!(*selected_row);
                     *selected_row = (*selected_row as isize - discrete_increments.y as isize)
                         .clamp(0, scale_selector.len() as isize - 1)
                         as usize;

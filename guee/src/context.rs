@@ -67,12 +67,7 @@ impl Context {
         widget
             .widget
             // Pass list of events to on_event
-            .on_event(
-                self,
-                &layout,
-                self.input_state.mouse_state.position,
-                &events,
-            );
+            .on_event(self, &layout, self.input_state.mouse.position, &events);
         widget.widget.draw(self, &layout);
         self.dispatched_callbacks
             .borrow_mut()
@@ -176,7 +171,7 @@ impl Context {
         let mut wstate = self.input_widget_state.borrow_mut();
         let drag = self
             .input_state
-            .mouse_state
+            .mouse
             .button_state
             .is_dragging(mouse_button);
 
