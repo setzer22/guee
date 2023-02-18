@@ -156,7 +156,11 @@ impl Widget for SplitPaneContainer {
         }
 
         if ctx
-            .claim_drag_event(layout.widget_id, handle_rect, MouseButton::Primary)
+            .claim_drag_event(
+                layout.widget_id,
+                MouseButton::Primary,
+                handle_rect.contains(cursor_position),
+            )
             .is_some()
         {
             let delta = ctx.input_state.mouse.delta().main_dir(self.axis);

@@ -207,7 +207,11 @@ impl Widget for DragValue {
         // A drag event will engage "drag" mode, while a click event will focus
         // and toggle the inner TextEdit.
         let dragging = ctx
-            .claim_drag_event(layout.widget_id, layout.bounds, MouseButton::Primary)
+            .claim_drag_event(
+                layout.widget_id,
+                MouseButton::Primary,
+                layout.bounds.contains(cursor_position),
+            )
             .is_some();
 
         // A TextEdit normally focuses itself, but we are inhibiting that below
