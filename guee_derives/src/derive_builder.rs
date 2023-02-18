@@ -1,11 +1,14 @@
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote, ToTokens};
-use syn::{ext::IdentExt, parenthesized, parse::Parse, parse2, Expr, PathArguments, Token, Type};
+use quote::{format_ident, quote, ToTokens};
+use syn::{
+    ext::IdentExt, parenthesized, parse::Parse, parse2, Expr, LitStr, PathArguments, Token, Type,
+};
 
 #[derive(Default, Debug)]
 struct BuilderStructAnnotation {
     is_widget: bool,
     skip_new: bool,
+    rename_new: Option<String>,
 }
 
 impl Parse for BuilderStructAnnotation {
@@ -21,11 +24,14 @@ impl Parse for BuilderStructAnnotation {
                     ann.is_widget = true;
                 } else if id == "skip_new" {
                     ann.skip_new = true;
+                } else if id == "rename_new" {
+                    let _eq = contents.parse::<Token![=]>()?;
+                    ann.rename_new = Some(contents.parse::<LitStr>()?.value());
                 } else {
                     return Err(syn::Error::new(id.span(), "Unsupported annotation: '{id}'"));
                 }
                 if contents.parse::<Token![,]>().is_err() {
-                    break
+                    break;
                 }
             }
         }
@@ -69,6 +75,9 @@ impl Parse for BuilderFieldAnnotation {
                     format!("Invalid annotation: {id}"),
                 ));
             }
+            if contents.parse::<Token![,]>().is_err() {
+                break;
+            }
         }
 
         Ok(ann)
@@ -107,9 +116,7 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
             .map(|id| id == "builder")
             .unwrap_or(false)
         {
-            if let Ok(ann) = parse2::<BuilderStructAnnotation>(attr.tokens.clone()) {
-                struct_annotation = ann;
-            }
+            struct_annotation = parse2::<BuilderStructAnnotation>(attr.tokens.clone())?;
         }
     }
 
@@ -214,8 +221,15 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
     let constructor = if struct_annotation.skip_new {
         quote! {}
     } else {
+        let fn_name = if let Some(new_name) = struct_annotation.rename_new {
+            let id = format_ident!("{new_name}");
+            quote! { #id }
+        } else {
+            quote! { new }
+        };
+
         quote! {
-            pub fn new(#(#mandatory_field_signatures),*) -> Self {
+            pub fn #fn_name(#(#mandatory_field_signatures),*) -> Self {
                 Self {
                     #(#mandatory_field_idents),*,
                     #(#default_initializers),*

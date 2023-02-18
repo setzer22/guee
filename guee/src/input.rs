@@ -44,6 +44,9 @@ pub enum ClickDragState {
     Idle,
     /// The mouse button has been clicked, but hasn't moved enough distance
     Clicked(Pos2),
+    /// Same as Self::Dragged, but marks the first frame after the drag event
+    /// started.
+    DragJustStarted(Pos2),
     /// The mouse button has moved enough with the mouse button held to register
     /// a drag and hasn't yet been released.
     Dragged(Pos2),
@@ -101,8 +104,22 @@ impl ButtonStateMap {
         self.state.get(&button).and_then(|x| match x.drag_state {
             ClickDragState::Idle => None,
             ClickDragState::Clicked(_) => None,
-            ClickDragState::Dragged(pos) => Some(pos),
+            ClickDragState::DragJustStarted(pos) | ClickDragState::Dragged(pos) => Some(pos),
         })
+    }
+
+    /// Returns whether a drag event has just started for the mouse with the
+    /// current button.
+    pub fn dragging_just_started(&self, button: MouseButton) -> bool {
+        self.state
+            .get(&button)
+            .map(|x| match x.drag_state {
+                ClickDragState::Idle => false,
+                ClickDragState::Clicked(_) => false,
+                ClickDragState::DragJustStarted(_) => true,
+                ClickDragState::Dragged(_) => false,
+            })
+            .unwrap_or(false)
     }
 
     /// Clears current "just pressed" state. Subsequent calls to
@@ -112,6 +129,14 @@ impl ButtonStateMap {
             b_state.just_pressed = false;
             b_state.just_released = false;
             b_state.just_clicked = false;
+            match b_state.drag_state {
+                ClickDragState::DragJustStarted(pos) => {
+                    b_state.drag_state = ClickDragState::Dragged(pos)
+                }
+                ClickDragState::Idle => (),
+                ClickDragState::Clicked(_) => (),
+                ClickDragState::Dragged(_) => (),
+            }
         }
     }
 
@@ -132,6 +157,7 @@ impl ButtonStateMap {
             }
             ClickDragState::Idle => (),
             ClickDragState::Dragged(_) => (),
+            ClickDragState::DragJustStarted(_) => (),
         }
         entry.drag_state = ClickDragState::Idle;
     }
@@ -142,9 +168,10 @@ impl ButtonStateMap {
             match b_state.drag_state {
                 ClickDragState::Idle => (),
                 ClickDragState::Dragged(_) => (),
+                ClickDragState::DragJustStarted(_) => (),
                 ClickDragState::Clicked(pos) => {
                     if pos.distance(cursor_pos) > DRAG_THRESHOLD_PX {
-                        b_state.drag_state = ClickDragState::Dragged(pos);
+                        b_state.drag_state = ClickDragState::DragJustStarted(pos);
                     }
                 }
             }

@@ -1,4 +1,7 @@
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    ops::RangeInclusive,
+};
 
 use epaint::{ahash::HashMap, Pos2, Vec2};
 use guee_derives::Builder;
@@ -6,38 +9,125 @@ use guee_derives::Builder;
 use crate::{extension_traits::Vec2Ext, input::MouseButton, prelude::*};
 
 #[derive(Builder)]
-#[builder(widget, skip_new)]
+#[builder(widget, rename_new = "__new")]
 pub struct DragValue {
-    pub value: f32,
-    #[builder(callback)]
-    pub on_changed: Option<Callback<f32>>,
+    /// The underlying float value that this drag value is "editing".
+    pub value: f64,
 
-    #[builder(skip)]
+    /// The base speed. After each discrete increment of mouse drag movement,
+    /// how much the underlying value is going to increase / decrease.
+    #[builder(default = 0.1)]
+    pub speed: f64,
+
+    /// When set, shows a scale selector allowing the user to adjust the base
+    /// speed by a multiplier.
+    #[builder(default)]
+    pub scale_selector: Option<ScaleSelector>,
+
+    /// When set, the scale selector will be first initialized at this index
+    /// instead of the half point.
+    #[builder(default)]
+    pub default_scale_selector_index: Option<usize>,
+
+    /// A recommended range of values for this slider. The values returned can
+    /// go beyond the limits when using the text edit feature, or when dragging
+    /// again after the slider reached the soft max/min value
+    #[builder(default = -f64::INFINITY..=f64::INFINITY)]
+    pub soft_range: RangeInclusive<f64>,
+
+    /// The range of movement for this slider. The values returned can never go
+    /// above or beyond those limits.
+    #[builder(default = -f64::INFINITY..=f64::INFINITY)]
+    pub hard_range: RangeInclusive<f64>,
+
+    /// Emitted when the value has changed.
+    #[builder(callback)]
+    pub on_changed: Option<Callback<f64>>,
+
+    /// Inner TextEdit, used to implement some functionalities for this widget
+    /// avoiding code repetition.
+    #[builder(skip, default = TextEdit::new(IdGen::key(""), "".to_string()))]
     pub text_edit: TextEdit,
 }
 
+#[derive(Clone, Debug)]
+pub struct ScaleSelector {
+    speeds: Vec<f64>,
+    labels: Vec<String>,
+}
+
+impl Default for ScaleSelector {
+    fn default() -> Self {
+        Self {
+            speeds: vec![100.0, 10.0, 1.0, 0.1, 0.01, 0.001, 0.0001],
+            labels: ["100", "10", "1", ".1", ".01", ".001", ".0001"]
+                .map(|x| x.to_string())
+                .to_vec(),
+        }
+    }
+}
+
+impl ScaleSelector {
+    fn new(speeds: Vec<f64>, labels: Vec<String>) -> Self {
+        assert_eq!(
+            speeds.len(),
+            labels.len(),
+            "Should provide the same amount of speeds and labels"
+        );
+        assert!(
+            speeds.len() > 1,
+            "The scale selector expects at least two different speeds to choose from."
+        );
+        Self { speeds, labels }
+    }
+
+    fn len(&self) -> usize {
+        self.speeds.len()
+    }
+}
+
 pub struct DragValueState {
+    /// The focus state for the widget during the last frame.
     pub last_focus_state: bool,
+
+    /// The string contents of the inner TextEdit. Stored here because we can't
+    /// rely on the app state storing it.
     pub string_contents: String,
+
+    /// Accumulated amount of mouse delta for the current drag event.
     pub acc_drag: Vec2,
+
+    /// The currently selected row for the scale selector.
+    pub selected_row: Option<usize>,
+
+    /// True when the current drag event started at the upper soft limit. This
+    /// allows the slider to go past the soft max.
+    pub upper_soft_limit: bool,
+
+    /// True when the current drag event started at the bottom soft limit. This
+    /// allows the slider to go past the soft min.
+    pub lower_soft_limit: bool,
 }
 
 impl DragValue {
-    pub fn format_contents(contents: f32) -> String {
+    pub fn format_contents(contents: f64) -> String {
         format!("{contents:.4}")
     }
 
-    pub fn contents_from_string(s: &str) -> Option<f32> {
+    pub fn contents_from_string(s: &str) -> Option<f64> {
         s.parse().ok()
     }
 
-    pub fn new(id: IdGen, value: f32) -> Self {
+    pub fn new(id: IdGen, value: f64) -> Self {
         DragValue {
             value,
-            on_changed: None,
-            // The string is patched later, during `Layout`, depending on this
-            // widget's internal state.
-            text_edit: TextEdit::new(id, String::new()),
+            text_edit: TextEdit::new(
+                id,
+                // The string contents are patched later, during `Layout`,
+                // depending on this widget's internal state.
+                String::new(),
+            ),
+            ..Self::__new(value)
         }
     }
 
@@ -73,6 +163,9 @@ impl Widget for DragValue {
                 last_focus_state: is_focused,
                 string_contents: Self::format_contents(self.value),
                 acc_drag: Vec2::ZERO,
+                selected_row: None,
+                upper_soft_limit: false,
+                lower_soft_limit: false,
             },
         );
 
@@ -176,8 +269,41 @@ impl Widget for DragValue {
                 }
             }
         } else if dragging {
+            // Scale selector
+            if let Some(scale_selector) = &self.scale_selector {
+                // Check if a drag event started exactly this frame, and initialize
+                // scale selector data.
+                if dragging
+                    && ctx
+                        .input_state
+                        .mouse_state
+                        .button_state
+                        .dragging_just_started(MouseButton::Primary)
+                {
+                    // NOTE: Only set the range if this is our first time editing this
+                    // DragValue. Doing this remembers previous scale value from the
+                    // last time the user touched this slider, which provides better UX:
+                    // The range they picked was probably a good one.
+                    if state.selected_row.is_none() {
+                        state.selected_row = Some(
+                            self.default_scale_selector_index
+                                .unwrap_or(scale_selector.len() / 2),
+                        )
+                    }
+                    state.lower_soft_limit = self.value <= *self.soft_range.start();
+                    state.upper_soft_limit = self.value >= *self.soft_range.end();
+                }
+
+                // Make sure the selected row always stays within bounds. This
+                // could change if a different amount of range divisions is set
+                // for this frame but old data was stored in memory.
+                state.selected_row = state
+                    .selected_row
+                    .map(|s| s.clamp(0, scale_selector.len() - 1));
+            }
+
+            // Handle mouse movement
             const MOUSE_AIM_PRECISION: f32 = 20.0;
-            const SCROLL_WHEEL_PRECISION: f32 = 50.0;
 
             let ctrl_held: bool = false;
 
@@ -191,7 +317,19 @@ impl Widget for DragValue {
             let discrete_increments = (state.acc_drag / MOUSE_AIM_PRECISION).floor();
             state.acc_drag = state.acc_drag.rem_euclid(MOUSE_AIM_PRECISION);
 
-            let delta_value = discrete_increments.x * 0.1;
+            let speed = match &self.scale_selector {
+                Some(scale_selector) => {
+                    let selected_row = state.selected_row.as_mut().expect("Should be initialized");
+                    dbg!(*selected_row);
+                    *selected_row = (*selected_row as isize - discrete_increments.y as isize)
+                        .clamp(0, scale_selector.len() as isize - 1)
+                        as usize;
+                    self.speed * scale_selector.speeds[*selected_row]
+                }
+                None => self.speed,
+            };
+
+            let delta_value = discrete_increments.x as f64 * speed;
             let new_value = self.value + delta_value;
             if let Some(on_changed) = self.on_changed.take() {
                 ctx.dispatch_callback(on_changed, new_value);

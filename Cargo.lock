@@ -625,6 +625,7 @@ dependencies = [
  "epaint",
  "guee_derives",
  "itertools",
+ "log",
  "winit",
 ]
 
