@@ -147,7 +147,10 @@ impl Widget for SplitPaneContainer {
     ) -> EventStatus {
         let mut state = self.get_mut_state(layout.widget_id, ctx);
 
-        let handle_rect = self.resize_handle_rect(state.frac, layout.bounds);
+        let handle_rect = self
+            .resize_handle_rect(state.frac, layout.bounds)
+            // Make it easier to interact with
+            .expand2(self.axis.new_vec2(5.0, 0.0));
 
         let mut status = EventStatus::Ignored;
 
@@ -155,14 +158,7 @@ impl Widget for SplitPaneContainer {
             self.hovered = true;
         }
 
-        if ctx
-            .claim_drag_event(
-                layout.widget_id,
-                MouseButton::Primary,
-                handle_rect.contains(cursor_position),
-            )
-            .is_some()
-        {
+        if ctx.claim_drag_event(layout.widget_id, handle_rect, MouseButton::Primary) {
             let delta = ctx.input_state.mouse.delta().main_dir(self.axis);
             let main_size = layout.bounds.size().main_dir(self.axis);
             state.frac += delta / main_size;

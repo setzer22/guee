@@ -251,6 +251,12 @@ pub struct TranslateScale {
     scale: f32,
 }
 
+impl Default for TranslateScale {
+    fn default() -> Self {
+        Self::identity()
+    }
+}
+
 impl TranslateScale {
     /// Returns the identity transformation.
     pub fn identity() -> Self {

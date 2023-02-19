@@ -1,7 +1,7 @@
 use epaint::{ahash::HashMap, Pos2, Vec2};
 use winit::event::{ElementState, VirtualKeyCode, WindowEvent};
 
-use crate::prelude::WidgetId;
+use crate::{prelude::WidgetId, painter::TranslateScale};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MouseButton {
@@ -108,6 +108,13 @@ pub struct InputState {
 
 #[derive(Clone, Debug, Default)]
 pub struct InputWidgetState {
+    /// The transform that has been applied to the cursor. Widgets that
+    /// transform the cursor position to their children must set this field for
+    /// children to properly track click and drag events.
+    ///
+    /// This should be the inverse of the transform that a node is applying when
+    /// rendering their child nodes.
+    pub cursor_transform: TranslateScale,
     pub focus: Option<WidgetId>,
     pub drag: Option<WidgetId>,
 }

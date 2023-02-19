@@ -161,18 +161,19 @@ impl Context {
     /// widget claimed this drag event before, registers the given `widget_id`
     /// as the widget that is currently handling that event.
     ///
-    /// The drag event is only claimed when `can_start` is set to true. This is
-    /// useful to avoid claiming an event when the mouse is not over a widget.
+    /// This function takes into account the cursor scaling set inside
+    /// `InputWidgetState`. Thus, widgets can send possibly transformed mouse
+    /// coordinates set by their parents.
     ///
-    /// Successive calls to this function for the same widget will return true,
-    /// until the drag event is done (e.g. the user lifts the mouse), even when
-    /// can_start is set to false.
+    /// The drag event can only be claimed when the drag position is inside the.
+    /// But successive calls to this function after teh drag event has been
+    /// claimed will continue to return true until the drag event ends.
     pub fn claim_drag_event(
         &self,
         widget_id: WidgetId,
+        rect: Rect,
         mouse_button: MouseButton,
-        can_start: bool,
-    ) -> Option<Pos2> {
+    ) -> bool {
         let mut wstate = self.input_widget_state.borrow_mut();
         let drag = self
             .input_state
@@ -182,15 +183,19 @@ impl Context {
 
         if let Some(drag_widget) = wstate.drag {
             if drag_widget == widget_id {
-                return drag;
+                return drag.is_some();
             }
         } else if let Some(drag_pos) = drag {
-            if can_start {
+            // Handle scaling, where layout is untransformed but mouse positions
+            // and painter shapes are.
+            let transformed_pos = wstate.cursor_transform.transform_point(drag_pos);
+
+            if rect.contains(transformed_pos) {
                 wstate.drag = Some(widget_id);
-                return Some(drag_pos);
+                return true;
             }
         }
-        None
+        false
     }
 
     /// Sets the theme for this context to the given `theme`.

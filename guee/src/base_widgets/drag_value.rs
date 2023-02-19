@@ -99,6 +99,9 @@ pub struct DragValueState {
     /// The focus state for the widget during the last frame.
     pub last_focus_state: bool,
 
+    /// The dragging state for the widget during the last frame.
+    pub last_drag_state: bool,
+
     /// The string contents of the inner TextEdit. Stored here because we can't
     /// rely on the app state storing it.
     pub string_contents: String,
@@ -174,6 +177,7 @@ impl Widget for DragValue {
             widget_id,
             DragValueState {
                 last_focus_state: is_focused,
+                last_drag_state: false,
                 string_contents: Self::format_contents(self.value),
                 acc_drag: Vec2::ZERO,
                 selected_row: None,
@@ -268,13 +272,7 @@ impl Widget for DragValue {
     ) -> EventStatus {
         // A drag event will engage "drag" mode, while a click event will focus
         // and toggle the inner TextEdit.
-        let dragging = ctx
-            .claim_drag_event(
-                layout.widget_id,
-                MouseButton::Primary,
-                layout.bounds.contains(cursor_position),
-            )
-            .is_some();
+        let dragging = ctx.claim_drag_event(layout.widget_id, layout.bounds, MouseButton::Primary);
 
         // A TextEdit normally focuses itself, but we are inhibiting that below
         // by not feeding it events unless it's focused.
@@ -306,9 +304,11 @@ impl Widget for DragValue {
 
         let mut state = ctx.memory.get_mut::<DragValueState>(layout.widget_id);
 
-        // Check if the component was just focused during this frame
+        // Check if the component was just focused or dragged during this frame
         let just_focused = state.last_focus_state != focused_now && focused_now;
         state.last_focus_state = focused_now;
+        let just_dragged = dragging != state.last_drag_state && dragging;
+        state.last_drag_state = dragging;
 
         if just_focused {
             // When first focused, the string contents are overriden with
@@ -341,12 +341,7 @@ impl Widget for DragValue {
             if let Some(scale_selector) = &self.scale_selector {
                 // Check if a drag event started exactly this frame, and initialize
                 // scale selector data.
-                if ctx
-                    .input_state
-                    .mouse
-                    .button_state
-                    .dragging_just_started(MouseButton::Primary)
-                {
+                if just_dragged {
                     // NOTE: Only set the range if this is our first time editing this
                     // DragValue. Doing this remembers previous scale value from the
                     // last time the user touched this slider, which provides better UX:
