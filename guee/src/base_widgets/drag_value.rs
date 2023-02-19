@@ -1,9 +1,6 @@
-use std::{
-    any::{Any, TypeId},
-    ops::RangeInclusive,
-};
+use std::ops::RangeInclusive;
 
-use epaint::{ahash::HashMap, emath::Align2, Pos2, RectShape, Rounding, Vec2};
+use epaint::{emath::Align2, Pos2, RectShape, Rounding, Vec2};
 use guee_derives::Builder;
 
 use crate::{extension_traits::Vec2Ext, input::MouseButton, prelude::*};
@@ -40,6 +37,11 @@ pub struct DragValue {
     #[builder(default = -f64::INFINITY..=f64::INFINITY)]
     pub hard_range: RangeInclusive<f64>,
 
+    /// The inner value will be rounded to this number of decimal values. If set
+    /// to 0, this acts as an Integer DragValue
+    #[builder(default = 4)]
+    pub num_decimals: u32,
+
     /// Emitted when the value has changed.
     #[builder(callback)]
     pub on_changed: Option<Callback<f64>>,
@@ -60,8 +62,8 @@ pub struct ScaleSelector {
     pub labels: Vec<String>,
 }
 
-impl Default for ScaleSelector {
-    fn default() -> Self {
+impl ScaleSelector {
+    pub fn float_7vals() -> Self {
         Self {
             show_left_of_widget: false,
             speeds: vec![100.0, 10.0, 1.0, 0.1, 0.01, 0.001, 0.0001],
@@ -70,10 +72,18 @@ impl Default for ScaleSelector {
                 .to_vec(),
         }
     }
+
+    pub fn int_3vals() -> Self {
+        Self {
+            show_left_of_widget: false,
+            speeds: vec![100.0, 10.0, 1.0],
+            labels: ["100", "10", "1"].map(|x| x.to_string()).to_vec(),
+        }
+    }
 }
 
 impl ScaleSelector {
-    fn new(speeds: Vec<f64>, labels: Vec<String>, left: bool) -> Self {
+    pub fn new(speeds: Vec<f64>, labels: Vec<String>, left: bool) -> Self {
         assert_eq!(
             speeds.len(),
             labels.len(),
@@ -126,8 +136,8 @@ pub struct DragValueState {
 }
 
 impl DragValue {
-    pub fn format_contents(contents: f64) -> String {
-        format!("{contents:.4}")
+    pub fn format_contents(contents: f64, num_decimals: usize) -> String {
+        format!("{contents:.num_decimals$}")
     }
 
     pub fn contents_from_string(s: &str) -> Option<f64> {
@@ -160,6 +170,26 @@ impl DragValue {
         self.text_edit = self.text_edit.padding(padding);
         self
     }
+
+    fn clamp_and_round_value(&self, state: &DragValueState, val: f64) -> f64 {
+        let lower_bound = if state.lower_soft_limit {
+            *self.hard_range.start()
+        } else {
+            *self.soft_range.start()
+        };
+        let upper_bound = if state.upper_soft_limit {
+            *self.hard_range.end()
+        } else {
+            *self.soft_range.end()
+        };
+
+        // Clamp base value
+        let val = val.clamp(lower_bound, upper_bound);
+
+        // Round to decimal places
+        let pow = 10.0f64.powi(self.num_decimals as i32);
+        (val * pow).round() / pow
+    }
 }
 
 impl Widget for DragValue {
@@ -178,7 +208,7 @@ impl Widget for DragValue {
             DragValueState {
                 last_focus_state: is_focused,
                 last_drag_state: false,
-                string_contents: Self::format_contents(self.value),
+                string_contents: Self::format_contents(self.value, self.num_decimals as usize),
                 acc_drag: Vec2::ZERO,
                 selected_row: None,
                 draw_scale_selector: false,
@@ -190,7 +220,7 @@ impl Widget for DragValue {
         if is_focused {
             self.text_edit.contents = state.string_contents.clone();
         } else {
-            self.text_edit.contents = Self::format_contents(self.value);
+            self.text_edit.contents = Self::format_contents(self.value, self.num_decimals as usize);
         }
 
         drop(state);
@@ -315,7 +345,7 @@ impl Widget for DragValue {
             // whatever float value we have, so that when the editor gains focus
             // the string is like the user was seeing it in the UI. Displaying
             // the old value can lead to confusing results.
-            state.string_contents = Self::format_contents(self.value);
+            state.string_contents = Self::format_contents(self.value, self.num_decimals as usize);
         }
 
         state.draw_scale_selector = dragging && self.scale_selector.is_some();
@@ -332,7 +362,10 @@ impl Widget for DragValue {
                 // our on_changed event
                 if let Some(new_value) = Self::contents_from_string(&result) {
                     if let Some(on_changed) = self.on_changed.take() {
-                        ctx.dispatch_callback(on_changed, new_value);
+                        ctx.dispatch_callback(
+                            on_changed,
+                            self.clamp_and_round_value(&state, new_value),
+                        );
                     }
                 }
             }
@@ -391,7 +424,8 @@ impl Widget for DragValue {
             };
 
             let delta_value = discrete_increments.x as f64 * speed;
-            let new_value = self.value + delta_value;
+            let new_value = self.clamp_and_round_value(&state, self.value + delta_value);
+
             if let Some(on_changed) = self.on_changed.take() {
                 ctx.dispatch_callback(on_changed, new_value);
                 status = EventStatus::Consumed

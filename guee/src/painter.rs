@@ -4,7 +4,7 @@ use epaint::{
     emath::Align2,
     text::{FontData, FontDefinitions},
     CircleShape, ClippedShape, Color32, CubicBezierShape, FontFamily, FontId, Fonts, Galley, Pos2,
-    Rect, RectShape, Rounding, Stroke, TextShape, Vec2,
+    Rect, RectShape, Rounding, Stroke, TextShape, Vec2, Shadow,
 };
 
 pub struct Painter {

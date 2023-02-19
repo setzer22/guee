@@ -240,9 +240,10 @@ impl InputState {
         }
     }
 
-    pub fn end_frame(&mut self) {
+    pub fn end_frame(&mut self, widget_state: &mut InputWidgetState) {
         self.mouse.prev_position = self.mouse.position;
         self.mouse.button_state.end_frame();
+        widget_state.cursor_transform = TranslateScale::identity();
     }
 
     pub fn on_winit_event(&mut self, widget_state: &mut InputWidgetState, ev: &WindowEvent) {

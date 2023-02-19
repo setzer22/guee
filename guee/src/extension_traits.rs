@@ -15,6 +15,14 @@ pub trait Color32Ext: Sized + Copy {
         *color = Color32::from_rgba_premultiplied(r, g, b, a);
         this
     }
+
+    /// Sets the alpha for this color
+    fn with_alpha(self, new_alpha: u8) -> Self {
+        let mut this = self;
+        let color = this.get_color();
+        *color = Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), new_alpha);
+        this
+    }
 }
 
 impl Color32Ext for Color32 {

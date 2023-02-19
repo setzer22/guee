@@ -73,7 +73,8 @@ impl Context {
         self.dispatched_callbacks
             .borrow_mut()
             .end_frame(state, &self.accessor_registry);
-        self.input_state.end_frame();
+        self.input_state
+            .end_frame(&mut self.input_widget_state.borrow_mut());
     }
 
     /// Returns a list of [`ClippedPrimitive`], suitable for rendering with an
