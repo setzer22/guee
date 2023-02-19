@@ -8,7 +8,7 @@ use crate::{
     widget::{DynWidget, Widget},
     widget_id::{IdGen, WidgetId},
 };
-use epaint::{Color32, Pos2, RectShape, Rounding, Stroke, Vec2};
+use epaint::{emath::Align2, Color32, Pos2, Rect, RectShape, Rounding, Stroke, Vec2};
 use guee_derives::Builder;
 
 use super::text::Text;
@@ -25,6 +25,8 @@ pub struct Button {
     pub hints: LayoutHints,
     #[builder(default = Vec2::new(10.0, 10.0))]
     pub padding: Vec2,
+    #[builder(default = Align2::CENTER_CENTER)]
+    pub align_contents: Align2,
     pub contents: DynWidget,
     #[builder(callback)]
     pub on_click: Option<Callback<()>>,
@@ -74,10 +76,10 @@ impl Widget for Button {
             SizeHint::Fill => available.y,
         };
 
-        contents_layout.translate(Vec2::new(
-            (width - contents_layout.bounds.width()) * 0.5,
-            (height - contents_layout.bounds.height()) * 0.5,
-        ));
+        contents_layout.bounds = self.align_contents.align_size_within_rect(
+            contents_layout.bounds.size(),
+            Rect::from_min_size(Pos2::ZERO, Vec2::new(width, height)).shrink2(self.padding),
+        );
 
         Layout::with_children(widget_id, Vec2::new(width, height), vec![contents_layout])
     }

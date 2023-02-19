@@ -74,6 +74,20 @@ impl<P> Callback<P> {
             f: Box::new(closure),
         })
     }
+
+    /// If self is an internal callback, clones it. Cloning an internal callback
+    /// is a very cheap operation, hence the 'copy' naming. External callbacks
+    /// store closures and can't be cloned.
+    ///
+    /// # Panics
+    ///
+    /// This function panic when given an external callback.
+    pub fn copy_internal(&self) -> Callback<P> {
+        match self {
+            Callback::External(_) => panic!("Called clone_internal with an external callback"),
+            Callback::Internal { token } => Callback::Internal { token: *token },
+        }
+    }
 }
 
 pub struct StateAccessor {

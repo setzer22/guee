@@ -128,15 +128,21 @@ impl Widget for TextEdit {
         let cursor_in_bounds = layout.bounds.contains(cursor_position);
         let _galley = self.galley.as_ref().unwrap();
 
+        let mut event_status = EventStatus::Ignored;
+
         for event in events {
             match event {
                 Event::MousePressed(MouseButton::Primary) if cursor_in_bounds => {
                     ctx.request_focus(layout.widget_id);
+                    event_status = EventStatus::Consumed;
                 }
                 Event::Text(ch) if is_focused => {
                     let mut contents = self.contents.clone();
                     contents.push(*ch);
-                    ctx.dispatch_callback(self.on_changed.take().unwrap(), contents);
+                    if let Some(on_changed) = self.on_changed.take() {
+                        ctx.dispatch_callback(on_changed, contents);
+                    }
+                    event_status = EventStatus::Consumed;
                 }
                 Event::KeyPressed(VirtualKeyCode::Back) if is_focused => {
                     if !self.contents.is_empty() {
@@ -146,6 +152,7 @@ impl Widget for TextEdit {
                             ctx.dispatch_callback(on_changed, contents);
                         }
                     }
+                    event_status = EventStatus::Consumed;
                 }
                 Event::KeyPressed(VirtualKeyCode::Escape) if is_focused => {
                     ctx.release_focus(layout.widget_id);
@@ -154,6 +161,6 @@ impl Widget for TextEdit {
             }
         }
 
-        EventStatus::Ignored
+        event_status
     }
 }
