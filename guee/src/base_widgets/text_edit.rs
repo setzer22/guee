@@ -21,7 +21,7 @@ pub mod text_buffer;
 pub struct TextEdit {
     pub id: IdGen,
     pub contents: String,
-    #[builder(default)]
+    #[builder(default = Vec2::new(3.0, 0.0))]
     pub padding: Vec2,
     #[builder(default)]
     pub layout_hints: LayoutHints,

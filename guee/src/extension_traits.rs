@@ -31,9 +31,9 @@ impl Color32Ext for Stroke {
 
 pub trait Vec2Ext {
     fn get_vec2(&self) -> Vec2;
-    fn rem_euclid(&self, rhs: f32) -> Vec2 {
+    fn rem_euclid(&self, rhs: Vec2) -> Vec2 {
         let v = self.get_vec2();
-        Vec2::new(v.x.rem_euclid(rhs), v.y.rem_euclid(rhs))
+        Vec2::new(v.x.rem_euclid(rhs.x), v.y.rem_euclid(rhs.y))
     }
 }
 

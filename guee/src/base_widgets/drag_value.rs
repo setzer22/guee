@@ -370,7 +370,7 @@ impl Widget for DragValue {
             }
 
             // Handle mouse movement
-            const MOUSE_AIM_PRECISION: f32 = 20.0;
+            const MOUSE_PRECISION: Vec2 = Vec2::new(20.0, 50.0);
 
             let modify_scale: bool = ctx.input_state.modifiers.ctrl_or_command;
 
@@ -381,8 +381,8 @@ impl Widget for DragValue {
                 state.acc_drag += ctx.input_state.mouse.delta().x * Vec2::X;
             }
 
-            let discrete_increments = (state.acc_drag / MOUSE_AIM_PRECISION).floor();
-            state.acc_drag = state.acc_drag.rem_euclid(MOUSE_AIM_PRECISION);
+            let discrete_increments = (state.acc_drag / MOUSE_PRECISION).floor();
+            state.acc_drag = state.acc_drag.rem_euclid(MOUSE_PRECISION);
 
             let speed = match &self.scale_selector {
                 Some(scale_selector) => {

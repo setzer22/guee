@@ -1,7 +1,8 @@
 use std::{
     any::Any,
+    borrow::BorrowMut,
     cell::{Ref, RefCell},
-    ops::{Deref, DerefMut}, borrow::BorrowMut,
+    ops::{Deref, DerefMut},
 };
 
 use epaint::{ClippedPrimitive, Pos2, Rect, TessellationOptions, Vec2};
