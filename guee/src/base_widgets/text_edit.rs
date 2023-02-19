@@ -87,7 +87,7 @@ impl Widget for TextEdit {
         let text_bounds = layout.bounds.shrink2(self.padding);
 
         let galley = self.galley.clone().unwrap();
-        ctx.painter().text(GueeTextShape {
+        ctx.painter().text_with_galley(GueeTextShape {
             pos: text_bounds.left_top(),
             galley: galley.clone(),
             underline: Stroke::NONE,

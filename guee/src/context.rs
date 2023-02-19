@@ -1,7 +1,7 @@
 use std::{
     any::Any,
     cell::{Ref, RefCell},
-    ops::{Deref, DerefMut},
+    ops::{Deref, DerefMut}, borrow::BorrowMut,
 };
 
 use epaint::{ClippedPrimitive, Pos2, Rect, TessellationOptions, Vec2};
@@ -85,7 +85,7 @@ impl Context {
             TessellationOptions::default(),
             painter.fonts.font_image_size(),
             vec![],
-            std::mem::take(&mut painter.shapes),
+            painter.borrow_mut().take_shapes(),
         )
     }
 

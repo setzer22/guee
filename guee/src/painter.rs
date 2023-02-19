@@ -1,16 +1,19 @@
 use std::sync::Arc;
 
 use epaint::{
+    emath::Align2,
     text::{FontData, FontDefinitions},
-    CircleShape, ClippedShape, Color32, CubicBezierShape, FontId, Fonts, Galley, Pos2, Rect,
-    RectShape, Rounding, Stroke, TextShape, Vec2, FontFamily,
+    CircleShape, ClippedShape, Color32, CubicBezierShape, FontFamily, FontId, Fonts, Galley, Pos2,
+    Rect, RectShape, Rounding, Stroke, TextShape, Vec2,
 };
 
 pub struct Painter {
     pub clip_rect: Rect,
     pub text_color: Color32,
     pub shapes: Vec<ClippedShape>,
+    pub overlay_shapes: Vec<ClippedShape>,
     pub transform: TranslateScale,
+    pub use_overlay: bool,
     pub fonts: Fonts,
 }
 
@@ -64,7 +67,9 @@ impl Painter {
             clip_rect: Rect::from_min_max(Pos2::ZERO, Pos2::ZERO),
             text_color: Color32::BLACK,
             shapes: Vec::new(),
+            overlay_shapes: Vec::new(),
             transform: TranslateScale::identity(),
+            use_overlay: false,
             fonts: Fonts::new(1.0, 1024, font_defs),
         }
     }
@@ -72,6 +77,29 @@ impl Painter {
     pub fn prepare(&mut self, clip_rect: Rect, text_color: Color32) {
         self.clip_rect = clip_rect;
         self.text_color = text_color;
+    }
+
+    /// Sets the use of the overlay shape buffer. When enabled, shapes will be
+    /// drawn on top of everything else.
+    pub fn set_overlay(&mut self, overlay: bool) {
+        self.use_overlay = true;
+    }
+
+    pub fn with_overlay(&mut self, f: impl FnOnce(&mut Self)) {
+        let old_overlay = self.use_overlay;
+        self.use_overlay = true;
+        f(self);
+        self.use_overlay = old_overlay;
+    }
+
+    /// Pushes a shape to be drawn
+    pub fn push_shape(&mut self, shape: epaint::Shape) {
+        if self.use_overlay {
+            self.overlay_shapes
+                .push(ClippedShape(self.clip_rect, shape))
+        } else {
+            self.shapes.push(ClippedShape(self.clip_rect, shape))
+        }
     }
 
     /// Paints the given `RectShape`
@@ -83,15 +111,12 @@ impl Painter {
             fill,
             stroke,
         } = rect_shape;
-        self.shapes.push(ClippedShape(
-            self.clip_rect,
-            epaint::Shape::Rect(RectShape {
-                rect: self.transform.transform_rectangle(rect),
-                rounding: self.transform.transform_rounding(rounding),
-                fill,
-                stroke,
-            }),
-        ));
+        self.push_shape(epaint::Shape::Rect(RectShape {
+            rect: self.transform.transform_rectangle(rect),
+            rounding: self.transform.transform_rounding(rounding),
+            fill,
+            stroke,
+        }));
     }
 
     /// Paints the given `CircleShape`
@@ -103,15 +128,12 @@ impl Painter {
             stroke,
         } = circle_shape;
 
-        self.shapes.push(ClippedShape(
-            self.clip_rect,
-            epaint::Shape::Circle(CircleShape {
-                center: self.transform.transform_point(center),
-                radius: self.transform.transform_scalar(radius),
-                fill,
-                stroke,
-            }),
-        ));
+        self.push_shape(epaint::Shape::Circle(CircleShape {
+            center: self.transform.transform_point(center),
+            radius: self.transform.transform_scalar(radius),
+            fill,
+            stroke,
+        }));
     }
 
     pub fn galley(&mut self, contents: String, font_id: FontId, wrap_width: f32) -> GueeGalley {
@@ -134,7 +156,7 @@ impl Painter {
     /// Note that the provided text colors, both in the galley and the override
     /// are ignored by this function, and instead the `text_color` stored in the
     /// painter property is used.
-    pub fn text(&mut self, text_shape: GueeTextShape) {
+    pub fn text_with_galley(&mut self, text_shape: GueeTextShape) {
         let GueeTextShape {
             galley,
             pos,
@@ -161,16 +183,24 @@ impl Painter {
             galley
         };
 
-        self.shapes.push(ClippedShape(
-            self.clip_rect,
-            epaint::Shape::Text(TextShape {
-                pos: self.transform.transform_point(pos),
-                override_text_color: Some(self.text_color),
-                galley: galley.epaint_galley,
-                underline,
-                angle,
-            }),
-        ));
+        self.push_shape(epaint::Shape::Text(TextShape {
+            pos: self.transform.transform_point(pos),
+            override_text_color: Some(self.text_color),
+            galley: galley.epaint_galley,
+            underline,
+            angle,
+        }));
+    }
+
+    pub fn text(&mut self, pos: Pos2, align: Align2, label: impl ToString, font: FontId) {
+        let galley = self.galley(label.to_string(), font, f32::INFINITY);
+        let rect = align.anchor_rect(Rect::from_min_size(pos, galley.bounds().size()));
+        self.text_with_galley(GueeTextShape {
+            galley,
+            pos: rect.min,
+            underline: Stroke::NONE,
+            angle: 0.0,
+        })
     }
 
     pub fn line_segment(&mut self, points: [Pos2; 2], stroke: Stroke) {
@@ -181,10 +211,7 @@ impl Painter {
         }
         stroke.width = self.transform.transform_scalar(stroke.width);
 
-        self.shapes.push(ClippedShape(
-            self.clip_rect,
-            epaint::Shape::LineSegment { points, stroke },
-        ))
+        self.push_shape(epaint::Shape::LineSegment { points, stroke })
     }
 
     pub fn cubic_bezier(&mut self, bezier_shape: CubicBezierShape) {
@@ -200,15 +227,19 @@ impl Painter {
         }
         stroke.width = self.transform.transform_scalar(stroke.width);
 
-        self.shapes.push(ClippedShape(
-            self.clip_rect,
-            epaint::Shape::CubicBezier(CubicBezierShape {
-                points,
-                closed,
-                fill,
-                stroke,
-            }),
-        ))
+        self.push_shape(epaint::Shape::CubicBezier(CubicBezierShape {
+            points,
+            closed,
+            fill,
+            stroke,
+        }))
+    }
+
+    /// Returns and drains the inner shape buffers. Use this method to draw the
+    /// shapes, as it will handle the correct ordering
+    pub fn take_shapes(&mut self) -> Vec<ClippedShape> {
+        self.shapes.append(&mut self.overlay_shapes);
+        std::mem::take(&mut self.shapes)
     }
 }
 

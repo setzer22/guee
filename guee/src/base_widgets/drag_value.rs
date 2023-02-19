@@ -3,7 +3,7 @@ use std::{
     ops::RangeInclusive,
 };
 
-use epaint::{ahash::HashMap, Pos2, Vec2};
+use epaint::{ahash::HashMap, emath::Align2, Pos2, RectShape, Rounding, Vec2};
 use guee_derives::Builder;
 
 use crate::{extension_traits::Vec2Ext, input::MouseButton, prelude::*};
@@ -52,13 +52,18 @@ pub struct DragValue {
 
 #[derive(Clone, Debug)]
 pub struct ScaleSelector {
-    speeds: Vec<f64>,
-    labels: Vec<String>,
+    /// True for left, false for right
+    pub show_left_of_widget: bool,
+    /// List of speed multiplers
+    pub speeds: Vec<f64>,
+    /// List of labels for the speed multiplers
+    pub labels: Vec<String>,
 }
 
 impl Default for ScaleSelector {
     fn default() -> Self {
         Self {
+            show_left_of_widget: false,
             speeds: vec![100.0, 10.0, 1.0, 0.1, 0.01, 0.001, 0.0001],
             labels: ["100", "10", "1", ".1", ".01", ".001", ".0001"]
                 .map(|x| x.to_string())
@@ -68,7 +73,7 @@ impl Default for ScaleSelector {
 }
 
 impl ScaleSelector {
-    fn new(speeds: Vec<f64>, labels: Vec<String>) -> Self {
+    fn new(speeds: Vec<f64>, labels: Vec<String>, left: bool) -> Self {
         assert_eq!(
             speeds.len(),
             labels.len(),
@@ -78,7 +83,11 @@ impl ScaleSelector {
             speeds.len() > 1,
             "The scale selector expects at least two different speeds to choose from."
         );
-        Self { speeds, labels }
+        Self {
+            show_left_of_widget: left,
+            speeds,
+            labels,
+        }
     }
 
     fn len(&self) -> usize {
@@ -96,6 +105,10 @@ pub struct DragValueState {
 
     /// Accumulated amount of mouse delta for the current drag event.
     pub acc_drag: Vec2,
+
+    /// Should the scale selector be drawn? When true, `selected_row` should
+    /// always be set.
+    pub draw_scale_selector: bool,
 
     /// The currently selected row for the scale selector.
     pub selected_row: Option<usize>,
@@ -164,6 +177,7 @@ impl Widget for DragValue {
                 string_contents: Self::format_contents(self.value),
                 acc_drag: Vec2::ZERO,
                 selected_row: None,
+                draw_scale_selector: false,
                 upper_soft_limit: false,
                 lower_soft_limit: false,
             },
@@ -189,7 +203,55 @@ impl Widget for DragValue {
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
-        self.text_edit.draw(ctx, layout)
+        self.text_edit.draw(ctx, layout);
+        let state = ctx.memory.get::<DragValueState>(layout.widget_id);
+
+        if state.draw_scale_selector {
+            let scale_selector = self
+                .scale_selector
+                .as_ref()
+                .expect("The draw_scale_selector property was set but no scale selector exists");
+            let selected_row = state.selected_row.expect("Should be initialized");
+
+            let padding = Vec2::new(4.0, 1.0);
+            let size = Vec2::new(60.0, 27.0);
+
+            let top_left = if scale_selector.show_left_of_widget {
+                layout.bounds.left_center()
+                    - Vec2::new(padding.x + size.x, size.y * (0.5 + selected_row as f32))
+            } else {
+                layout.bounds.right_center()
+                    - Vec2::new(-padding.x, size.y * (0.5 + selected_row as f32))
+            };
+
+            let mut painter = ctx.painter();
+
+            painter.with_overlay(|painter| {
+                for (i, label) in scale_selector.labels.iter().enumerate() {
+                    let pos = top_left + Vec2::new(0.0, size.y) * i as f32;
+
+                    painter.rect(RectShape {
+                        rect: Rect::from_min_size(pos, size),
+                        rounding: Rounding::none(),
+                        // TODO: THEME
+                        fill: if selected_row == i {
+                            color!("#373737B0")
+                        } else {
+                            color!("#212121B0")
+                        },
+                        stroke: Stroke::new(1.0, color!("#3c3c3c")),
+                    });
+
+                    painter.text(
+                        pos + Vec2::new(size.x * 0.5, padding.y),
+                        Align2::CENTER_TOP,
+                        label,
+                        // TODO: THEME
+                        FontId::proportional(14.0),
+                    );
+                }
+            })
+        }
     }
 
     fn layout_hints(&self) -> LayoutHints {
@@ -255,6 +317,8 @@ impl Widget for DragValue {
             // the old value can lead to confusing results.
             state.string_contents = Self::format_contents(self.value);
         }
+
+        state.draw_scale_selector = dragging && self.scale_selector.is_some();
 
         // When the TextEdit is focused, it should behave like a regular
         // TextEdit, letting the user write anything in the text box

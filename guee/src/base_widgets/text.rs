@@ -50,7 +50,7 @@ impl Widget for Text {
             .last_galley
             .clone()
             .expect("Layout should be called before draw");
-        ctx.painter().text(GueeTextShape {
+        ctx.painter().text_with_galley(GueeTextShape {
             galley,
             pos: layout.bounds.left_top(),
             underline: Stroke::NONE,
