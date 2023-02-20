@@ -17,4 +17,8 @@ pub mod stack_container;
 
 pub mod split_pane_container;
 
+pub mod sized_container;
+
+pub mod custom_draw_container;
+
 pub mod spacer;

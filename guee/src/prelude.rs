@@ -9,6 +9,8 @@ pub use crate::{
         stack_container::StackContainer,
         text::Text,
         text_edit::TextEdit,
+        sized_container::SizedContainer,
+        custom_draw_container::CustomDrawContainer,
     },
     callback::Callback,
     context::Context,
