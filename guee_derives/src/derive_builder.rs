@@ -43,7 +43,7 @@ impl Parse for BuilderStructAnnotation {
 struct BuilderFieldAnnotation {
     is_default: bool,
     skip_setter: bool,
-    is_callback: bool,
+    strip_option: bool,
     default_expr: Option<Expr>,
 }
 
@@ -66,9 +66,9 @@ impl Parse for BuilderFieldAnnotation {
             } else if id == "skip" {
                 ann.is_default = true;
                 ann.skip_setter = true;
-            } else if id == "callback" {
+            } else if id == "strip_option" {
                 ann.is_default = true;
-                ann.is_callback = true;
+                ann.strip_option = true;
             } else {
                 return Err(syn::Error::new(
                     id.span(),
@@ -86,7 +86,7 @@ impl Parse for BuilderFieldAnnotation {
 
 impl BuilderFieldAnnotation {
     pub fn validate(&self, struct_ann: &BuilderStructAnnotation, span: Span) -> syn::Result<()> {
-        if !struct_ann.is_widget && self.is_callback {
+        if !struct_ann.is_widget && self.strip_option {
             return Err(syn::Error::new(
                 span,
                 "Callback fields not supported if #[builder(widget)] is not used.",
@@ -132,7 +132,7 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
         ty: Type,
         default_expr: Option<Expr>,
         skip_setter: bool,
-        is_callback: bool,
+        strip_option: bool,
     }
 
     impl OptionalField {
@@ -177,7 +177,7 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
                             ty: field.ty,
                             default_expr: ann.default_expr,
                             skip_setter: ann.skip_setter,
-                            is_callback: ann.is_callback,
+                            strip_option: ann.strip_option,
                         });
                     } else {
                         mandatory_fields.push(MandatoryField {
@@ -245,28 +245,27 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
             let ty = &opt.ty;
             if opt.skip_setter {
                 Ok(quote!())
-            } else if opt.is_callback {
-                let docstring = format!(" Sets the `{ident}` callback for this `{s_ident}`.");
-                let cb_type = unwrap_callback_type(ident.span(), ty)?;
-                Ok(quote! {
-                    #[doc = #docstring]
-                    pub fn #ident<F, T>(mut self, f: F) -> Self
-                    where
-                        F: FnOnce(&mut T, #cb_type) + 'static,
-                        T: 'static,
-                    {
-                        let cb = guee::callback::Callback::from_fn(f);
-                        self.#ident = Some(cb);
-                        self
-                    }
-                })
             } else {
                 let docstring =
                     format!(" Sets the `{ident}` for this `{s_ident}` to a custom value.",);
+
+                let ty_expr = if opt.strip_option {
+                    let ty = unwrap_typ(ty, ident.span(), "Option")?;
+                    quote! { #ty }
+                } else {
+                    quote! { #ty }
+                };
+
+                let setter_expr = if opt.strip_option {
+                    quote! { self.#ident = Some(arg); }
+                } else {
+                    quote! { self.#ident = arg; }
+                };
+
                 Ok(quote! {
                     #[doc = #docstring]
-                    pub fn #ident(mut self, arg: #ty) -> Self {
-                        self.#ident = arg;
+                    pub fn #ident(mut self, arg: #ty_expr) -> Self {
+                        #setter_expr
                         self
                     }
                 })
@@ -292,14 +291,9 @@ pub(crate) fn guee_derive_builder_2(input: syn::DeriveInput) -> syn::Result<Toke
         }
     })
 }
-pub fn unwrap_callback_type(span: Span, ty: &Type) -> syn::Result<&Type> {
-    let inner = unwrap_typ(ty, span, "Option")?;
-    let inner = unwrap_typ(inner, span, "Callback")?;
-    Ok(inner)
-}
-
 // Given a generic type with a single argument like Option<T>, returns a Type
 // with the inner T
+#[allow(unused)] // might be useful later
 pub fn unwrap_typ<'a>(typ: &'a Type, span: Span, expected: &str) -> syn::Result<&'a Type> {
     if let Type::Path(typepath) = typ {
         if let Some(seg) = typepath.path.segments.first() {

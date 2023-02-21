@@ -18,6 +18,8 @@ pub mod base_widgets;
 
 pub mod callback;
 
+pub mod callback_accessor;
+
 pub mod memory;
 
 pub mod theme;

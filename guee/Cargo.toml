@@ -13,3 +13,4 @@ epaint = { git = "https://github.com/emilk/egui", rev = "c58ac86935123415ea3c153
 winit = "0.27.2"
 bytemuck = "1"
 log = "0.4"
+dyn-clone = "1.0"

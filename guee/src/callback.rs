@@ -1,5 +1,4 @@
-use epaint::ahash::{HashMap, HashSet};
-use itertools::Itertools;
+use epaint::ahash::HashMap;
 use std::{
     any::{Any, TypeId},
     marker::PhantomData,
@@ -59,22 +58,6 @@ pub enum Callback<P> {
 }
 
 impl<P> Callback<P> {
-    /// Constructs an external callback from the given function
-    pub fn from_fn<F, T>(f: F) -> Callback<P>
-    where
-        T: 'static,
-        F: FnOnce(&mut T, P) + 'static,
-    {
-        let closure = move |t_any: &mut dyn Any, p: P| {
-            let t: &mut T = t_any.downcast_mut().expect("Failed downcast");
-            f(t, p);
-        };
-        Callback::External(ExternalCallback {
-            input_type: TypeId::of::<T>(),
-            f: Box::new(closure),
-        })
-    }
-
     /// If self is an internal callback, clones it. Cloning an internal callback
     /// is a very cheap operation, hence the 'copy' naming. External callbacks
     /// store closures and can't be cloned.
@@ -90,124 +73,6 @@ impl<P> Callback<P> {
     }
 }
 
-pub struct StateAccessor {
-    #[allow(unused)] // Will use them later
-    input_type: TypeId,
-    #[allow(unused)]
-    output_type: TypeId,
-    #[allow(clippy::type_complexity)]
-    accessor_fn: Box<dyn for<'a> Fn(&'a mut dyn Any) -> &'a mut dyn Any>,
-}
-
-impl StateAccessor {
-    pub fn from_fn<F, T, U>(f: F) -> Self
-    where
-        F: Fn(&mut T) -> &mut U + 'static,
-        T: 'static,
-        U: 'static,
-    {
-        // NOTE: This is a trick to annotate the closure using a HRTB, since
-        // that's currently not supported by rust.
-        //
-        // This uses a similar trick to the `higher_order_closure` crate, but we
-        // don't want an external dependency just for this.
-        let closure = ({
-            fn funnel<Closure>(f: Closure) -> Closure
-            where
-                Closure: for<'a> Fn(&'a mut dyn Any) -> &'a mut dyn Any,
-            {
-                f
-            }
-            funnel::<_>
-        })(move |t_any| f(t_any.downcast_mut().expect("Failed downcast")));
-
-        StateAccessor {
-            input_type: TypeId::of::<T>(),
-            output_type: TypeId::of::<U>(),
-            accessor_fn: Box::new(closure),
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct AccessorRegistry {
-    accessors: HashMap<(TypeId, TypeId), StateAccessor>,
-}
-
-impl AccessorRegistry {
-    pub fn register_accessor<F, T, U>(&mut self, f: F)
-    where
-        F: Fn(&mut T) -> &mut U + 'static,
-        T: 'static,
-        U: 'static,
-    {
-        let accessor = StateAccessor::from_fn(f);
-        self.accessors
-            .insert((TypeId::of::<T>(), TypeId::of::<U>()), accessor);
-    }
-
-    pub fn find_path(&self, from_typ: TypeId, to_typ: TypeId) -> Vec<TypeId> {
-        fn recursive(
-            this: &AccessorRegistry,
-            current: TypeId,
-            target: TypeId,
-            visited: &mut HashSet<TypeId>,
-        ) -> Option<Vec<TypeId>> {
-            visited.insert(current);
-            if current == target {
-                Some(vec![current])
-            } else {
-                for (src, dst) in this.accessors.keys() {
-                    if current == *src {
-                        if visited.contains(dst) {
-                            panic!("Should be a DAG. TODO: Better error reporting")
-                        }
-                        if let Some(mut result) = recursive(this, *dst, target, visited) {
-                            result.push(current);
-                            return Some(result);
-                        }
-                    }
-                }
-                None
-            }
-        }
-
-        if let Some(mut found) = recursive(self, from_typ, to_typ, &mut Default::default()) {
-            found.reverse();
-            found
-        } else {
-            panic!("No registered accessor from {from_typ:?} to {to_typ:?}");
-        }
-    }
-
-    pub fn access<'a>(
-        &self,
-        from: &'a mut dyn Any,
-        from_typ: TypeId,
-        to_typ: TypeId,
-    ) -> &'a mut dyn Any {
-        let path = self.find_path(from_typ, to_typ);
-        let mut to = from;
-        for (src, dst) in path.iter().tuple_windows() {
-            let acc = &self.accessors[&(*src, *dst)];
-            to = (acc.accessor_fn)(to);
-        }
-        to
-    }
-
-    pub fn invoke_callback(&self, state: &mut dyn Any, cd: DispatchedExternalCallback) {
-        // Explicit deref necessary to differentiate between getting the type_id
-        // of the inner type or the reference itself
-        let state_type = (*state).type_id();
-        if state_type == cd.input_type {
-            cd.invoke(state);
-        } else {
-            let projected = self.access(state, state_type, cd.input_type);
-            cd.invoke(projected);
-        }
-    }
-}
-
 /// A dispatched callback is a type-erased external callback (no generic P) plus
 /// its type-erased payload and an invoker function that can be used to run the
 /// actual callback code.
@@ -216,8 +81,6 @@ impl AccessorRegistry {
 /// on_event, to enqueue some things to be called later, when the app state can
 /// be accessed.
 pub struct DispatchedExternalCallback {
-    // The input type of the callback
-    input_type: TypeId,
     // The type-erased external callback
     callback: Box<dyn Any>,
     // The stored payload to call the callback with
@@ -236,7 +99,6 @@ impl DispatchedExternalCallback {
             (cb.f)(input, p);
         };
         DispatchedExternalCallback {
-            input_type: c.input_type,
             callback: Box::new(c),
             payload: Box::new(payload),
             invoker: Box::new(closure),
@@ -275,10 +137,10 @@ impl DispatchedCallbackStorage {
 
     /// Call at the end of the frame to run any pending external callbacks and
     /// clean up callback storage for the next frame.
-    pub fn end_frame(&mut self, state: &mut dyn Any, accessor_registry: &AccessorRegistry) {
+    pub fn end_frame(&mut self, state: &mut dyn Any) {
         self.internal.clear();
         for callback in self.external.drain(..) {
-            accessor_registry.invoke_callback(state, callback);
+            callback.invoke(state);
         }
         self.next_token = 0;
     }
@@ -309,6 +171,8 @@ impl DispatchedCallbackStorage {
 
 #[cfg(test)]
 mod tests {
+    use crate::callback_accessor::CallbackAccessor;
+
     use super::*;
 
     #[test]
@@ -331,30 +195,25 @@ mod tests {
             y: f32,
         }
 
-        let mut registry = AccessorRegistry::default();
-        registry.register_accessor(|state: &mut State| &mut state.foo);
-        registry.register_accessor(|state: &mut State| &mut state.bar);
-        registry.register_accessor(|state: &mut Foo| &mut state.baz);
-
         let mut state = State::default();
+        let state_cba = CallbackAccessor::<State>::root();
 
-        let bar_dyn = registry.access(&mut state, TypeId::of::<State>(), TypeId::of::<Bar>());
-        let Bar { ref mut x } = bar_dyn.downcast_mut().unwrap();
-        *x = 42.0;
+        let bar_cba = state_cba.drill_down(|state| &mut state.bar);
+        let bar_cb = bar_cba.callback(|bar, _| {
+            bar.x = 123.4;
+        });
 
-        let baz_dyn: &mut dyn Any =
-            registry.access(&mut state, TypeId::of::<State>(), TypeId::of::<Baz>());
-        let Baz { ref mut y } = baz_dyn.downcast_mut().unwrap();
-        *y = 9.99;
-
-        assert_eq!(state.bar.x, 42.0);
-        assert_eq!(state.foo.baz.y, 9.99);
+        let foo_cba = state_cba.drill_down(|state| &mut state.foo);
+        let baz_cba = foo_cba.drill_down(|foo| &mut foo.baz);
+        let baz_cb = baz_cba.callback(|baz, _| {
+            baz.y = 432.1;
+        });
 
         let mut storage = DispatchedCallbackStorage::default();
 
-        storage.dispatch_callback(Callback::from_fn(|bar: &mut Bar, _| bar.x = 123.4), ());
-        storage.dispatch_callback(Callback::from_fn(|baz: &mut Baz, _| baz.y = 432.1), ());
-        storage.end_frame(&mut state, &registry);
+        storage.dispatch_callback(bar_cb, ());
+        storage.dispatch_callback(baz_cb, ());
+        storage.end_frame(&mut state);
 
         assert_eq!(state.bar.x, 123.4);
         assert_eq!(state.foo.baz.y, 432.1);
@@ -375,8 +234,8 @@ mod tests {
 impl<P> Clone for PollToken<P> {
     fn clone(&self) -> Self {
         Self {
-            token: self.token.clone(),
-            _phantom: self._phantom.clone(),
+            token: self.token,
+            _phantom: self._phantom,
         }
     }
 }

@@ -4,7 +4,7 @@ use epaint::{
     emath::Align2,
     text::{FontData, FontDefinitions},
     CircleShape, ClippedShape, Color32, CubicBezierShape, FontFamily, FontId, Fonts, Galley, Pos2,
-    Rect, RectShape, Rounding, Stroke, TextShape, Vec2, Shadow,
+    Rect, RectShape, Rounding, Stroke, TextShape, Vec2,
 };
 
 pub struct Painter {
@@ -82,7 +82,7 @@ impl Painter {
     /// Sets the use of the overlay shape buffer. When enabled, shapes will be
     /// drawn on top of everything else.
     pub fn set_overlay(&mut self, overlay: bool) {
-        self.use_overlay = true;
+        self.use_overlay = overlay;
     }
 
     pub fn with_overlay(&mut self, f: impl FnOnce(&mut Self)) {

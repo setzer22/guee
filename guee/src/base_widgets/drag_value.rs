@@ -43,7 +43,7 @@ pub struct DragValue {
     pub num_decimals: u32,
 
     /// Emitted when the value has changed.
-    #[builder(callback)]
+    #[builder(strip_option)]
     pub on_changed: Option<Callback<f64>>,
 
     /// Inner TextEdit, used to implement some functionalities for this widget

@@ -28,7 +28,7 @@ pub struct Button {
     #[builder(default = Align2::CENTER_CENTER)]
     pub align_contents: Align2,
     pub contents: DynWidget,
-    #[builder(callback)]
+    #[builder(strip_option)]
     pub on_click: Option<Callback<()>>,
 }
 

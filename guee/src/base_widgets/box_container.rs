@@ -69,15 +69,11 @@ impl Widget for BoxContainer {
         {
             SizeHint::Shrink => {
                 let axis = self.axis;
-                let mut size_main = 0.0;
                 let mut size_cross = 0.0;
 
                 for c_layout in &shrink_child_layouts {
-                    let c_available = axis.vec2_add_to_main(available, -size_main);
                     let s = c_layout.bounds.size();
-
                     size_cross = f32::max(size_cross, s.cross_dir(axis));
-                    size_main += s.main_dir(axis);
                 }
                 size_cross
             }

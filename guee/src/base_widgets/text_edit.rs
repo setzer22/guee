@@ -12,8 +12,6 @@ use crate::{
     widget_id::{IdGen, WidgetId},
 };
 
-use super::button::Button;
-
 pub mod text_buffer;
 
 #[derive(Builder)]
@@ -27,7 +25,7 @@ pub struct TextEdit {
     pub layout_hints: LayoutHints,
     #[builder(skip)]
     pub galley: Option<GueeGalley>,
-    #[builder(callback)]
+    #[builder(strip_option)]
     pub on_changed: Option<Callback<String>>,
     #[builder(default = 60.0)]
     pub min_width: f32,

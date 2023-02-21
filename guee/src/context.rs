@@ -1,17 +1,9 @@
-use std::{
-    any::Any,
-    borrow::BorrowMut,
-    cell::{Ref, RefCell},
-    ops::{Deref, DerefMut},
-};
+use std::{any::Any, borrow::BorrowMut, cell::RefCell, ops::DerefMut};
 
 use epaint::{ClippedPrimitive, Pos2, Rect, TessellationOptions, Vec2};
 
 use crate::{
-    callback::{
-        AccessorRegistry, Callback, DispatchedCallbackStorage, DispatchedExternalCallback,
-        PollToken,
-    },
+    callback::{Callback, DispatchedCallbackStorage, PollToken},
     input::{InputState, InputWidgetState, MouseButton},
     memory::Memory,
     painter::{ExtraFont, Painter},
@@ -24,7 +16,6 @@ pub struct Context {
     pub painter: RefCell<Painter>,
     pub input_state: InputState,
     pub input_widget_state: RefCell<InputWidgetState>,
-    pub accessor_registry: AccessorRegistry,
     pub dispatched_callbacks: RefCell<DispatchedCallbackStorage>,
     pub memory: Memory,
     pub theme: RefCell<Theme>,
@@ -41,7 +32,6 @@ impl Context {
             painter: RefCell::new(Painter::new(extra_fonts)),
             input_state: InputState::new(screen_size),
             dispatched_callbacks: Default::default(),
-            accessor_registry: Default::default(),
             memory: Default::default(),
             input_widget_state: Default::default(),
             theme: RefCell::new(Theme::new_empty()),
@@ -70,9 +60,7 @@ impl Context {
             // Pass list of events to on_event
             .on_event(self, &layout, self.input_state.mouse.position, &events);
         widget.widget.draw(self, &layout);
-        self.dispatched_callbacks
-            .borrow_mut()
-            .end_frame(state, &self.accessor_registry);
+        self.dispatched_callbacks.borrow_mut().end_frame(state);
         self.input_state
             .end_frame(&mut self.input_widget_state.borrow_mut());
     }
