@@ -2,7 +2,8 @@ use guee_derives::Builder;
 
 use crate::{painter::Painter, prelude::*};
 
-/// A container that forces to render its child widget with a specific maximum size.
+/// A container that lets you perform custom drawing operations either before or
+/// after drawing the widget `contents`.
 #[derive(Builder)]
 #[builder(widget)]
 #[allow(clippy::type_complexity)]
