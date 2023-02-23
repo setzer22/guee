@@ -66,7 +66,7 @@ impl Widget for StackContainer {
         cursor_position: Pos2,
         events: &[Event],
     ) -> EventStatus {
-        for ((_, ch), ch_layout) in self.contents.iter_mut().zip(&layout.children) {
+        for ((_, ch), ch_layout) in self.contents.iter_mut().zip(&layout.children).rev() {
             if let EventStatus::Consumed =
                 ch.widget.on_event(ctx, ch_layout, cursor_position, events)
             {

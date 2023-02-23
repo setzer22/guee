@@ -15,6 +15,8 @@ pub mod margin_container;
 
 pub mod stack_container;
 
+pub mod scroll_container;
+
 pub mod split_pane_container;
 
 pub mod sized_container;

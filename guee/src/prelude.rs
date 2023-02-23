@@ -12,6 +12,7 @@ pub use crate::{
         stack_container::StackContainer,
         text::Text,
         text_edit::TextEdit,
+        scroll_container::VScrollContainer,
     },
     callback::Callback,
     context::Context,
