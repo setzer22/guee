@@ -182,9 +182,6 @@ impl Widget for VScrollContainer {
             status = EventStatus::Consumed;
         }
 
-        // WIP:
-        // - Dismiss the node finder on other button click
-
         status
     }
 }
