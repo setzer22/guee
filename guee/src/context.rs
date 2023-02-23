@@ -6,7 +6,7 @@ use crate::{
     callback::{Callback, DispatchedCallbackStorage, PollToken},
     input::{InputState, InputWidgetState, MouseButton},
     memory::Memory,
-    painter::{ExtraFont, Painter},
+    painter::{ExtraFont, Painter, TranslateScale},
     theme::Theme,
     widget::DynWidget,
     widget_id::WidgetId,
@@ -185,6 +185,16 @@ impl Context {
             }
         }
         false
+    }
+
+    pub fn with_cursor_transform<T>(&self, tr: TranslateScale, f: impl FnOnce() -> T) -> T {
+        let old = self
+            .input_widget_state
+            .borrow_mut()
+            .add_cursor_transform(tr);
+        let t = f();
+        self.input_widget_state.borrow_mut().cursor_transform = old;
+        t
     }
 
     /// Sets the theme for this context to the given `theme`.

@@ -1,7 +1,9 @@
+use std::borrow::BorrowMut;
+
 use epaint::{RectShape, Rounding};
 use guee_derives::Builder;
 
-use crate::{input::MouseButton, prelude::*};
+use crate::{input::MouseButton, painter::TranslateScale, prelude::*};
 
 #[derive(Builder)]
 #[builder(widget)]
@@ -136,15 +138,21 @@ impl Widget for VScrollContainer {
                 },
             )
             .scrollbar_frac;
-        let transformed_cursor_position =
-            cursor_position + Vec2::Y * self.y_offset(layout, scrollbar_frac);
 
-        if let EventStatus::Consumed = self.contents.widget.on_event(
-            ctx,
-            &layout.children[0],
-            transformed_cursor_position,
-            events,
-        ) {
+        // Set cursor transform
+        let cursor_transform =
+            TranslateScale::identity().translated(Vec2::Y * self.y_offset(layout, scrollbar_frac));
+        let ch_status = ctx.with_cursor_transform(cursor_transform, || {
+            let transformed_cursor_position = cursor_transform.transform_point(cursor_position);
+            self.contents.widget.on_event(
+                ctx,
+                &layout.children[0],
+                transformed_cursor_position,
+                events,
+            )
+        });
+
+        if ch_status == EventStatus::Consumed {
             return EventStatus::Consumed;
         }
 

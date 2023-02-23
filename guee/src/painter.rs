@@ -283,6 +283,12 @@ impl TranslateScale {
         }
     }
 
+    /// Applies the transformation in `other` after self. First scale,
+    /// then translation.
+    pub fn combined(&self, other: TranslateScale) -> TranslateScale {
+        self.scaled(other.scale).translated(other.translation)
+    }
+
     /// Applies the scaling and translation of this transformation to the given
     /// `point`.
     pub fn transform_point(&self, point: Pos2) -> Pos2 {

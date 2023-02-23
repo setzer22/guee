@@ -1,7 +1,7 @@
 use epaint::{ahash::HashMap, Pos2, Vec2};
 use winit::event::{ElementState, VirtualKeyCode, WindowEvent};
 
-use crate::{prelude::WidgetId, painter::TranslateScale};
+use crate::{painter::TranslateScale, prelude::WidgetId};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MouseButton {
@@ -117,6 +117,16 @@ pub struct InputWidgetState {
     pub cursor_transform: TranslateScale,
     pub focus: Option<WidgetId>,
     pub drag: Option<WidgetId>,
+}
+
+impl InputWidgetState {
+    /// Adds `tr` to the current cursor transform. Returns the old one so it can
+    /// be restored later.
+    pub fn add_cursor_transform(&mut self, tr: TranslateScale) -> TranslateScale {
+        let old = self.cursor_transform;
+        self.cursor_transform = self.cursor_transform.combined(tr);
+        old
+    }
 }
 
 impl ButtonStateMap {
