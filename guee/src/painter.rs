@@ -3,8 +3,8 @@ use std::sync::Arc;
 use epaint::{
     emath::Align2,
     text::{FontData, FontDefinitions},
-    CircleShape, ClippedShape, Color32, CubicBezierShape, FontFamily, FontId, Fonts, Galley, Pos2,
-    Rect, RectShape, Rounding, Stroke, TextShape, Vec2,
+    CircleShape, ClippedShape, Color32, CubicBezierShape, FontFamily, FontId, Fonts, Galley, Mesh,
+    Pos2, Rect, RectShape, Rounding, Stroke, TextShape, TextureId, Vec2,
 };
 
 pub struct Painter {
@@ -134,6 +134,17 @@ impl Painter {
             fill,
             stroke,
         }));
+    }
+
+    /// Paints a tetured rect with the given texture_id with default UV mapping
+    pub fn image(&mut self, rect: Rect, texture_id: TextureId) {
+        let mut mesh = Mesh::with_texture(texture_id);
+        mesh.add_rect_with_uv(
+            rect,
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            Color32::WHITE,
+        );
+        self.push_shape(epaint::Shape::mesh(mesh));
     }
 
     pub fn galley(&mut self, contents: String, font_id: FontId, wrap_width: f32) -> GueeGalley {

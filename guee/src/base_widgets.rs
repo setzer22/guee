@@ -5,6 +5,8 @@ pub mod colored_box;
 
 pub mod text;
 
+pub mod image;
+
 pub mod text_edit;
 
 pub mod drag_value;
