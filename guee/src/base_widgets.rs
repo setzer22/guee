@@ -23,8 +23,6 @@ pub mod split_pane_container;
 
 pub mod sized_container;
 
-pub mod event_handling_container;
-
-pub mod custom_draw_container;
+pub mod tinker_container;
 
 pub mod spacer;
