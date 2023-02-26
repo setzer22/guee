@@ -1,6 +1,6 @@
 use guee_derives::Builder;
 
-use crate::{painter::Painter, prelude::*};
+use crate::prelude::*;
 
 // type-alias-impl-trait unfortunately no go brrrr yet, so we do this instead
 macro_rules! event_fn_ty {

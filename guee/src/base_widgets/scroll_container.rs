@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use epaint::{RectShape, Rounding};
 use guee_derives::Builder;
 
@@ -162,13 +160,9 @@ impl Widget for VScrollContainer {
         let mut status = EventStatus::Ignored;
         if layout.bounds.contains(cursor_position) {
             for event in events {
-                match &event {
-                    Event::MouseWheel(delta) => {
-                        state.scrollbar_frac =
-                            (state.scrollbar_frac - delta.y * 0.05).clamp(0.0, 1.0);
-                        status = EventStatus::Consumed;
-                    }
-                    _ => (),
+                if let Event::MouseWheel(delta) = &event {
+                    state.scrollbar_frac = (state.scrollbar_frac - delta.y * 0.05).clamp(0.0, 1.0);
+                    status = EventStatus::Consumed;
                 }
             }
         }
