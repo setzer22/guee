@@ -284,6 +284,19 @@ impl Widget for DragValue {
                         FontId::proportional(14.0),
                     );
                 }
+
+                #[cfg(target_os = "macos")]
+                static CTRL_KEY_LABEL: &str = "↕ Cmd";
+                #[cfg(not(target_os = "macos"))]
+                static CTRL_KEY_LABEL: &str = "↕ Ctrl";
+
+                let bottom_left = top_left + Vec2::new(0.0, size.y * scale_selector.len() as f32);
+                painter.text(
+                    bottom_left,
+                    Align2::LEFT_TOP,
+                    CTRL_KEY_LABEL,
+                    FontId::proportional(10.0),
+                );
             })
         }
     }
