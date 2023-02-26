@@ -23,6 +23,26 @@ pub trait Color32Ext: Sized + Copy {
         *color = Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), new_alpha);
         this
     }
+
+    /// Returns the blue channel of this color, as a float between 0 and 1
+    fn red_f(mut self) -> f32 {
+        self.get_color().r() as f32 / u8::MAX as f32
+    }
+
+    /// Returns the blue channel of this color, as a float between 0 and 1
+    fn green_f(mut self) -> f32 {
+        self.get_color().g() as f32 / u8::MAX as f32
+    }
+
+    /// Returns the blue channel of this color, as a float between 0 and 1
+    fn blue_f(mut self) -> f32 {
+        self.get_color().b() as f32 / u8::MAX as f32
+    }
+
+    /// Returns the alpha channel of this color, as a float between 0 and 1
+    fn alpha_f(mut self) -> f32 {
+        self.get_color().a() as f32 / u8::MAX as f32
+    }
 }
 
 impl Color32Ext for Color32 {
