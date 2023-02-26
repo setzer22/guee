@@ -15,7 +15,7 @@ pub struct Text {
     contents: String,
     #[builder(skip)]
     last_galley: Option<GueeGalley>,
-    #[builder(default)]
+    #[builder(default, strip_option)]
     color_override: Option<Color32>,
     #[builder(default = 14.0)]
     font_size: f32,

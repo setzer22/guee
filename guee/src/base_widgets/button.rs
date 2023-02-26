@@ -30,6 +30,8 @@ pub struct Button {
     pub contents: DynWidget,
     #[builder(strip_option)]
     pub on_click: Option<Callback<()>>,
+    #[builder(default, strip_option)]
+    pub style_override: Option<ButtonStyle>,
 }
 
 #[derive(Builder, Default)]
@@ -48,6 +50,14 @@ impl Button {
     pub fn with_label(label: impl Into<String>) -> Self {
         let label = label.into();
         Button::new(IdGen::key(&label), Text::new(label).build())
+    }
+
+    pub fn with_colored_label(label: impl Into<String>, color: Color32) -> Self {
+        let label = label.into();
+        Button::new(
+            IdGen::key(&label),
+            Text::new(label).color_override(color).build(),
+        )
     }
 }
 
@@ -87,7 +97,10 @@ impl Widget for Button {
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
         let default_style = ButtonStyle::default();
         let theme = ctx.theme.borrow();
-        let style = theme.get_style::<Self>().unwrap_or(&default_style);
+        let style = self
+            .style_override
+            .as_ref()
+            .unwrap_or_else(|| theme.get_style::<Self>().unwrap_or(&default_style));
 
         ctx.painter().rect(RectShape {
             rect: layout.bounds,

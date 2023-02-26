@@ -43,4 +43,10 @@ impl Theme {
                 .expect("Downcast failed: Should contain the right style type")
         })
     }
+
+    pub fn set_text_color(&mut self, color: Color32) -> epaint::Color32 {
+        let old = self.text_color;
+        self.text_color = color;
+        old
+    }
 }
