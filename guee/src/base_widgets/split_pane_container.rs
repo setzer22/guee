@@ -47,7 +47,7 @@ impl SplitPaneContainer {
         Rect::from_center_size(
             self.axis.new_vec2(main_center, cross_center).to_pos2(),
             self.axis.new_vec2(self.handle_width, cross_size),
-        )
+        ).translate(bounds.left_top().to_vec2())
     }
     pub fn resize_handle_visual_rect(&self, frac: f32, bounds: Rect) -> Rect {
         let handle_rect = self.resize_handle_rect(frac, bounds);

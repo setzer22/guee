@@ -113,8 +113,12 @@ impl Widget for TinkerContainer {
             .widget
             .layout(ctx, parent_id, available, force_shrink);
 
-        if let Some(post_layout) = self.post_layout.take() {
-            (post_layout)(ctx, &layout);
+        // HACK: Only invoke the callback when this is the real layout, not a
+        // "force_shrink" first pass.
+        if !force_shrink {
+            if let Some(post_layout) = self.post_layout.take() {
+                (post_layout)(ctx, &layout);
+            }
         }
 
         layout
