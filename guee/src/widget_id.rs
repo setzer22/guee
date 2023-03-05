@@ -88,6 +88,9 @@ impl IdGen {
         Self::Literal(WidgetId::new(source))
     }
 
+    /// For literal id generators, returns the literal value. For key id
+    /// generators which depend on the parent id, returns the parent id hashed
+    /// with the key.
     pub fn resolve(&self, parent_id: WidgetId) -> WidgetId {
         match self {
             IdGen::Key(k) => parent_id.with(k),
