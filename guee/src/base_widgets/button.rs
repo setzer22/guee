@@ -32,9 +32,11 @@ pub struct Button {
     pub on_click: Option<Callback<()>>,
     #[builder(default, strip_option)]
     pub style_override: Option<ButtonStyle>,
+    #[builder(default)]
+    pub min_size: Vec2,
 }
 
-#[derive(Builder, Default)]
+#[derive(Builder, Default, Clone)]
 pub struct ButtonStyle {
     pub pressed_fill: Color32,
     pub pressed_stroke: Stroke,
@@ -78,11 +80,15 @@ impl Widget for Button {
 
         let size_hints = self.hints.size_hints;
         let width = match size_hints.width.or_force(force_shrink) {
-            SizeHint::Shrink => contents_layout.bounds.width() + 2.0 * padding.x,
+            SizeHint::Shrink => {
+                contents_layout.bounds.width().max(self.min_size.x) + 2.0 * padding.x
+            }
             SizeHint::Fill => available.x,
         };
         let height = match size_hints.height.or_force(force_shrink) {
-            SizeHint::Shrink => contents_layout.bounds.height() + 2.0 * padding.y,
+            SizeHint::Shrink => {
+                contents_layout.bounds.height().max(self.min_size.y) + 2.0 * padding.y
+            }
             SizeHint::Fill => available.y,
         };
 

@@ -11,6 +11,8 @@ pub mod text_edit;
 
 pub mod drag_value;
 
+pub mod menubar_button;
+
 pub mod box_container;
 
 pub mod margin_container;
