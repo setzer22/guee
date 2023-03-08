@@ -29,6 +29,8 @@ pub struct TextEdit {
     pub on_changed: Option<Callback<String>>,
     #[builder(default = 60.0)]
     pub min_width: f32,
+    #[builder(default = 14.0)]
+    pub font_size: f32,
 }
 
 #[derive(Default)]
@@ -55,7 +57,7 @@ impl Widget for TextEdit {
 
         let galley = ctx.painter().galley(
             self.contents.clone(),
-            FontId::proportional(14.0),
+            FontId::proportional(self.font_size),
             // The text in a text edit does not wrap at a certain width.
             f32::INFINITY,
         );
