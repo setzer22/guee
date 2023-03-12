@@ -9,7 +9,7 @@ use crate::{
     painter::{ExtraFont, Painter, TranslateScale},
     theme::Theme,
     widget::DynWidget,
-    widget_id::WidgetId,
+    widget_id::WidgetId, prelude::EventStatus,
 };
 
 pub struct Context {
@@ -58,7 +58,13 @@ impl Context {
         widget
             .widget
             // Pass list of events to on_event
-            .on_event(self, &layout, self.input_state.mouse.position, &events);
+            .on_event(
+                self,
+                &layout,
+                self.input_state.mouse.position,
+                &events,
+                &mut EventStatus::Ignored,
+            );
         widget.widget.draw(self, &layout);
         self.dispatched_callbacks.borrow_mut().end_frame(state);
         self.input_state

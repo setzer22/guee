@@ -35,6 +35,20 @@ impl EventStatus {
             EventStatus::Consumed => EventStatus::Consumed,
         }
     }
+
+    pub fn is_consumed(&self) -> bool {
+        match self {
+            EventStatus::Ignored => false,
+            EventStatus::Consumed => true,
+        }
+    }
+
+    pub fn consume_event(&mut self) {
+        if self.is_consumed() {
+            log::warn!("Widget consuming an already consumed event!");
+        }
+        *self = EventStatus::Consumed;
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default)]

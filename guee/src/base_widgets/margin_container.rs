@@ -67,9 +67,10 @@ impl Widget for MarginContainer {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        status: &mut EventStatus,
+    ) {
         self.contents
             .widget
-            .on_event(ctx, &layout.children[0], cursor_position, events)
+            .on_event(ctx, &layout.children[0], cursor_position, events, status)
     }
 }

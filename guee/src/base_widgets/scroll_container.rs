@@ -126,7 +126,8 @@ impl Widget for VScrollContainer {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        status: &mut EventStatus,
+    ) {
         let scrollbar_frac = ctx
             .memory
             .get_or::<VScrollContainerState>(
@@ -147,11 +148,12 @@ impl Widget for VScrollContainer {
                 &layout.children[0],
                 transformed_cursor_position,
                 events,
+                status,
             )
         });
 
-        if ch_status == EventStatus::Consumed {
-            return EventStatus::Consumed;
+        if status.is_consumed() {
+            return;
         }
 
         let mut state = ctx
@@ -162,7 +164,7 @@ impl Widget for VScrollContainer {
             for event in events {
                 if let Event::MouseWheel(delta) = &event {
                     state.scrollbar_frac = (state.scrollbar_frac - delta.y * 0.05).clamp(0.0, 1.0);
-                    status = EventStatus::Consumed;
+                    status.consume_event();
                 }
             }
         }
@@ -173,9 +175,7 @@ impl Widget for VScrollContainer {
             let main_size = layout.bounds.height() - handle_bounds.height();
             state.scrollbar_frac += delta / main_size;
             state.scrollbar_frac = state.scrollbar_frac.clamp(0.00, 1.0);
-            status = EventStatus::Consumed;
+            status.consume_event();
         }
-
-        status
     }
 }

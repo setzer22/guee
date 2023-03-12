@@ -11,7 +11,7 @@ macro_rules! event_fn_ty {
         event_fn_ty!(inner impl)
     };
     (inner $token:tt) => {
-        $token FnOnce(&Context, &Layout, Pos2, &[Event]) -> EventStatus + 'static
+        $token FnOnce(&Context, &Layout, Pos2, &[Event], &mut EventStatus) + 'static
     };
 }
 macro_rules! draw_fn_ty {
@@ -144,25 +144,18 @@ impl Widget for TinkerContainer {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        status: &mut EventStatus,
+    ) {
         if let Some(pre) = self.pre_event.take() {
-            if let EventStatus::Consumed = (pre)(ctx, layout, cursor_position, events) {
-                return EventStatus::Consumed;
-            }
+            (pre)(ctx, layout, cursor_position, events, status);
         }
 
-        if let EventStatus::Consumed =
-            self.contents
-                .widget
-                .on_event(ctx, layout, cursor_position, events)
-        {
-            return EventStatus::Consumed;
-        }
+        self.contents
+            .widget
+            .on_event(ctx, layout, cursor_position, events, status);
 
         if let Some(post) = self.post_event.take() {
-            (post)(ctx, layout, cursor_position, events)
-        } else {
-            EventStatus::Ignored
+            (post)(ctx, layout, cursor_position, events, status);
         }
     }
 }

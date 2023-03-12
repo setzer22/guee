@@ -73,7 +73,7 @@ impl Widget for ColoredBox {
         _layout: &Layout,
         _cursor_position: Pos2,
         _events: &[Event],
-    ) -> EventStatus {
-        EventStatus::Ignored
+        _status: &mut EventStatus,
+    ) {
     }
 }

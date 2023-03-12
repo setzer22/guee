@@ -178,17 +178,54 @@ impl Widget for MenubarButton {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        status: &mut EventStatus,
+    ) {
         let inner_widgets = self.inner_widgets.as_mut().unwrap();
         inner_widgets.outer_button.widget.on_event(
             ctx,
             &layout.children[0],
             cursor_position,
             events,
+            &mut EventStatus::Ignored, // Don't let inner widgets consume events
         );
 
-        // HACK: Dismiss click detection -- we do it here because on_event may not be called.
-        // We need to find a better solution for this.
+        if ctx
+            .poll_callback_result(inner_widgets.outer_poll_token)
+            .is_some()
+        {
+            let mut state = ctx.memory.get_mut::<MenubarButtonState>(layout.widget_id);
+            state.is_open = true;
+            status.consume_event();
+        }
+
+        if ctx
+            .memory
+            .get::<MenubarButtonState>(layout.widget_id)
+            .is_open
+            && layout.children.len() > 1
+        {
+            inner_widgets.inner_contents.widget.on_event(
+                ctx,
+                &layout.children[1],
+                cursor_position,
+                events,
+                &mut EventStatus::Ignored, // Don't let inner widgets consume events
+            );
+
+            for (idx, tk) in inner_widgets.inner_poll_tokens.iter().copied().enumerate() {
+                if ctx.poll_callback_result(tk).is_some() {
+                    ctx.memory
+                        .get_mut::<MenubarButtonState>(layout.widget_id)
+                        .is_open = false;
+                    if let Some(on_option_selected) = self.on_option_selected.take() {
+                        ctx.dispatch_callback(on_option_selected, idx);
+                        status.consume_event();
+                    }
+                }
+            }
+        }
+
+        // Dismiss click detection
         {
             let mut state = ctx.memory.get_mut::<MenubarButtonState>(layout.widget_id);
             let mouse_pos = cursor_position;
@@ -206,43 +243,6 @@ impl Widget for MenubarButton {
                 }
             }
         }
-
-        if ctx
-            .poll_callback_result(inner_widgets.outer_poll_token)
-            .is_some()
-        {
-            let mut state = ctx.memory.get_mut::<MenubarButtonState>(layout.widget_id);
-            state.is_open = true;
-            return EventStatus::Consumed;
-        }
-
-        if ctx
-            .memory
-            .get::<MenubarButtonState>(layout.widget_id)
-            .is_open
-            && layout.children.len() > 1
-        {
-            inner_widgets.inner_contents.widget.on_event(
-                ctx,
-                &layout.children[1],
-                cursor_position,
-                events,
-            );
-
-            for (idx, tk) in inner_widgets.inner_poll_tokens.iter().copied().enumerate() {
-                if ctx.poll_callback_result(tk).is_some() {
-                    ctx.memory
-                        .get_mut::<MenubarButtonState>(layout.widget_id)
-                        .is_open = false;
-                    if let Some(on_option_selected) = self.on_option_selected.take() {
-                        ctx.dispatch_callback(on_option_selected, idx);
-                        return EventStatus::Consumed;
-                    }
-                }
-            }
-        }
-
-        EventStatus::Ignored
     }
 }
 

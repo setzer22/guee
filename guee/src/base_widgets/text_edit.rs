@@ -118,7 +118,12 @@ impl Widget for TextEdit {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        status: &mut EventStatus
+    ) {
+        if status.is_consumed() {
+            return;
+        }
+
         let mut _ui_state = ctx
             .memory
             .get_mut_or(layout.widget_id, TextEditUiState::default());
@@ -126,13 +131,11 @@ impl Widget for TextEdit {
         let cursor_in_bounds = layout.bounds.contains(cursor_position);
         let _galley = self.galley.as_ref().unwrap();
 
-        let mut event_status = EventStatus::Ignored;
-
         for event in events {
             match event {
                 Event::MousePressed(MouseButton::Primary) if cursor_in_bounds => {
                     ctx.request_focus(layout.widget_id);
-                    event_status = EventStatus::Consumed;
+                    status.consume_event();
                 }
                 Event::Text(ch) if is_focused => {
                     let mut contents = self.contents.clone();
@@ -140,7 +143,7 @@ impl Widget for TextEdit {
                     if let Some(on_changed) = self.on_changed.take() {
                         ctx.dispatch_callback(on_changed, contents);
                     }
-                    event_status = EventStatus::Consumed;
+                    status.consume_event();
                 }
                 Event::KeyPressed(VirtualKeyCode::Back) if is_focused => {
                     if !self.contents.is_empty() {
@@ -150,7 +153,7 @@ impl Widget for TextEdit {
                             ctx.dispatch_callback(on_changed, contents);
                         }
                     }
-                    event_status = EventStatus::Consumed;
+                    status.consume_event();
                 }
                 Event::KeyPressed(VirtualKeyCode::Escape) if is_focused => {
                     ctx.release_focus(layout.widget_id);
@@ -158,7 +161,5 @@ impl Widget for TextEdit {
                 _ => {}
             }
         }
-
-        event_status
     }
 }

@@ -37,9 +37,10 @@ impl Widget for SizedContainer {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        status: &mut EventStatus,
+    ) {
         self.contents
             .widget
-            .on_event(ctx, layout, cursor_position, events)
+            .on_event(ctx, layout, cursor_position, events, status)
     }
 }

@@ -139,7 +139,12 @@ impl Widget for Button {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        event_status: &mut EventStatus,
+    ) {
+        if event_status.is_consumed() {
+            return;
+        }
+
         if layout.bounds.contains(cursor_position) {
             self.hovered = true;
             for event in events {
@@ -148,12 +153,10 @@ impl Widget for Button {
                         ctx.dispatch_callback(on_click, ())
                     }
                     self.pressed = true;
-                    return EventStatus::Consumed;
+                    *event_status = EventStatus::Consumed;
                 }
             }
         }
-
-        EventStatus::Ignored
     }
 }
 

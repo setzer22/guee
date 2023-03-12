@@ -47,7 +47,7 @@ impl Widget for Image {
         _layout: &Layout,
         _cursor_position: Pos2,
         _events: &[Event],
-    ) -> EventStatus {
-        EventStatus::Ignored
+        _event_status: &mut EventStatus,
+    ) {
     }
 }

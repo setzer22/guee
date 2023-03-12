@@ -312,7 +312,12 @@ impl Widget for DragValue {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
+        status: &mut EventStatus,
+    ) {
+        if status.is_consumed() {
+            return;
+        }
+
         // A drag event will engage "drag" mode, while a click event will focus
         // and toggle the inner TextEdit.
         let dragging = ctx.claim_drag_event(layout.widget_id, layout.bounds, MouseButton::Primary);
@@ -338,11 +343,12 @@ impl Widget for DragValue {
 
         // If the child is not focused, ignore its event processing logic
         // We instead do our own focus handling
-        let mut status = self.text_edit.on_event(
+        self.text_edit.on_event(
             ctx,
             layout,
             cursor_position,
             if focused_now { events } else { &[] },
+            status,
         );
 
         let mut state = ctx.memory.get_mut::<DragValueState>(layout.widget_id);
@@ -369,7 +375,7 @@ impl Widget for DragValue {
             if let Some(result) = ctx.poll_callback_result(tk) {
                 // If the inner text changed, replace the contents in transient state
                 state.string_contents = result.clone();
-                status = EventStatus::Consumed;
+                status.consume_event();
 
                 // Additionally, if the contents can be parsed as float, emit
                 // our on_changed event
@@ -441,10 +447,8 @@ impl Widget for DragValue {
 
             if let Some(on_changed) = self.on_changed.take() {
                 ctx.dispatch_callback(on_changed, new_value);
-                status = EventStatus::Consumed
+                status.consume_event();
             }
         }
-
-        status
     }
 }

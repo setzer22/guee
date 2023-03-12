@@ -8,7 +8,13 @@ use crate::{
 };
 
 pub trait Widget {
-    fn layout(&mut self, ctx: &Context, parent_id: WidgetId, available: Vec2, force_shrink: bool) -> Layout;
+    fn layout(
+        &mut self,
+        ctx: &Context,
+        parent_id: WidgetId,
+        available: Vec2,
+        force_shrink: bool,
+    ) -> Layout;
     fn draw(&mut self, ctx: &Context, layout: &Layout);
     fn layout_hints(&self) -> LayoutHints;
     fn on_event(
@@ -17,7 +23,8 @@ pub trait Widget {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus;
+        status: &mut EventStatus,
+    );
 }
 
 pub struct DynWidget {

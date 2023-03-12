@@ -47,7 +47,8 @@ impl SplitPaneContainer {
         Rect::from_center_size(
             self.axis.new_vec2(main_center, cross_center).to_pos2(),
             self.axis.new_vec2(self.handle_width, cross_size),
-        ).translate(bounds.left_top().to_vec2())
+        )
+        .translate(bounds.left_top().to_vec2())
     }
     pub fn resize_handle_visual_rect(&self, frac: f32, bounds: Rect) -> Rect {
         let handle_rect = self.resize_handle_rect(frac, bounds);
@@ -144,50 +145,44 @@ impl Widget for SplitPaneContainer {
         layout: &Layout,
         cursor_position: Pos2,
         events: &[Event],
-    ) -> EventStatus {
-        let mut state = self.get_mut_state(layout.widget_id, ctx);
+        status: &mut EventStatus,
+    ) {
+        if !status.is_consumed() {
+            let mut state = self.get_mut_state(layout.widget_id, ctx);
 
-        let handle_rect = self
-            .resize_handle_rect(state.frac, layout.bounds)
-            // Make it easier to interact with
-            .expand2(self.axis.new_vec2(5.0, 0.0));
+            let handle_rect = self
+                .resize_handle_rect(state.frac, layout.bounds)
+                // Make it easier to interact with
+                .expand2(self.axis.new_vec2(5.0, 0.0));
 
-        let mut status = EventStatus::Ignored;
+            let mut status = EventStatus::Ignored;
 
-        if handle_rect.contains(cursor_position) {
-            self.hovered = true;
+            if handle_rect.contains(cursor_position) {
+                self.hovered = true;
+            }
+
+            if ctx.claim_drag_event(layout.widget_id, handle_rect, MouseButton::Primary) {
+                let delta = ctx.input_state.mouse.delta().main_dir(self.axis);
+                let main_size = layout.bounds.size().main_dir(self.axis);
+                state.frac += delta / main_size;
+                state.frac = state.frac.clamp(0.01, 0.99);
+                // Prevents hovering other widgets while dragging
+                self.hovered = true;
+                status.consume_event();
+            }
         }
 
-        if ctx.claim_drag_event(layout.widget_id, handle_rect, MouseButton::Primary) {
-            let delta = ctx.input_state.mouse.delta().main_dir(self.axis);
-            let main_size = layout.bounds.size().main_dir(self.axis);
-            state.frac += delta / main_size;
-            state.frac = state.frac.clamp(0.01, 0.99);
-            // Prevents hovering other widgets while dragging
-            self.hovered = true;
-            status = EventStatus::Consumed;
-        }
+        self.left_widget
+            .widget
+            .on_event(ctx, &layout.children[0], cursor_position, events, status);
 
-        // Drop the borrow on state, so children can access their memory
-        drop(state);
-
-        // If not yet handled, handle events in children
-        if status != EventStatus::Consumed {
-            status = self
-                .left_widget
-                .widget
-                .on_event(ctx, &layout.children[0], cursor_position, events)
-                .or_else(|| {
-                    self.right_widget.widget.on_event(
-                        ctx,
-                        &layout.children[1],
-                        cursor_position,
-                        events,
-                    )
-                });
-        }
-
-        status
+        self.right_widget.widget.on_event(
+            ctx,
+            &layout.children[1],
+            cursor_position,
+            events,
+            status,
+        );
     }
 }
 
