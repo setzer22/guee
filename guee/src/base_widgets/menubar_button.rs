@@ -122,22 +122,6 @@ impl Widget for MenubarButton {
                 .layout(ctx, widget_id, available, force_shrink)
                 .translated((outer_button_bounds.left_bottom() + Vec2::new(0.0, 3.0)).to_vec2());
 
-            // HACK: Dismiss click detection -- we do it here because on_event may not be called.
-            {
-                let mut state = ctx.memory.get_mut::<MenubarButtonState>(widget_id);
-                let mouse_pos = ctx.input_state.mouse.position;
-                if ctx
-                    .input_state
-                    .mouse
-                    .button_state
-                    .is_clicked(MouseButton::Primary)
-                    && !inner_contents_layout.bounds.contains(mouse_pos)
-                    && !outer_button_bounds.contains(mouse_pos)
-                {
-                    state.is_open = false;
-                }
-            }
-
             children.push(inner_contents_layout);
         }
 
@@ -202,6 +186,26 @@ impl Widget for MenubarButton {
             cursor_position,
             events,
         );
+
+        // HACK: Dismiss click detection -- we do it here because on_event may not be called.
+        // We need to find a better solution for this.
+        {
+            let mut state = ctx.memory.get_mut::<MenubarButtonState>(layout.widget_id);
+            let mouse_pos = cursor_position;
+            if state.is_open {
+                if ctx
+                    .input_state
+                    .mouse
+                    .button_state
+                    .is_clicked(MouseButton::Primary)
+                    && !layout.children[0].bounds.contains(mouse_pos)
+                    && !layout.children[1].bounds.contains(mouse_pos)
+                {
+                    state.is_open = false;
+                    println!("Dismiss!");
+                }
+            }
+        }
 
         if ctx
             .poll_callback_result(inner_widgets.outer_poll_token)
