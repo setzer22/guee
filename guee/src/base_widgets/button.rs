@@ -4,14 +4,14 @@ use crate::{
     extension_traits::Color32Ext,
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints, SizeHint},
-    prelude::StyledWidget,
+    prelude::{Align, BoxContainer, Spacer, StyledWidget},
     widget::{DynWidget, Widget},
     widget_id::{IdGen, WidgetId},
 };
-use epaint::{emath::Align2, Color32, Pos2, Rect, RectShape, Rounding, Stroke, Vec2};
+use epaint::{emath::Align2, Color32, Pos2, Rect, RectShape, Rounding, Stroke, TextureId, Vec2};
 use guee_derives::Builder;
 
-use super::text::Text;
+use super::{image::Image, text::Text};
 
 #[derive(Builder)]
 #[builder(widget)]
@@ -52,6 +52,33 @@ impl Button {
     pub fn with_label(label: impl Into<String>) -> Self {
         let label = label.into();
         Button::new(IdGen::key(&label), Text::new(label).build())
+    }
+
+    pub fn with_icon(icon: TextureId, uv_rect: Rect, size: Vec2) -> Self {
+        let img = Image::new(IdGen::key(icon), icon, LayoutHints::shrink())
+            .min_size(size)
+            .uv_rect(uv_rect)
+            .build();
+        Button::new(IdGen::key(("button", icon)), img)
+    }
+
+    pub fn with_icon_and_label(
+        label: impl Into<String>,
+        icon: TextureId,
+        uv_rect: Rect,
+        icon_size: Vec2,
+    ) -> Self {
+        let label = label.into();
+        let new_id = IdGen::key((icon, &label));
+        let img = Image::new(IdGen::key(icon), icon, LayoutHints::shrink())
+            .min_size(icon_size)
+            .uv_rect(uv_rect)
+            .build();
+        let text = Text::new(label).build();
+        let contents = BoxContainer::horizontal(new_id.with("row"), vec![img, text])
+            .separation(8.0)
+            .cross_align(Align::Center);
+        Button::new(new_id.with("button"), contents.build())
     }
 
     pub fn with_colored_label(label: impl Into<String>, color: Color32) -> Self {

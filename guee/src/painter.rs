@@ -141,13 +141,9 @@ impl Painter {
     }
 
     /// Paints a tetured rect with the given texture_id with default UV mapping
-    pub fn image(&mut self, rect: Rect, texture_id: TextureId) {
+    pub fn image(&mut self, rect: Rect, texture_id: TextureId, uv_rect: Rect, tint: Color32) {
         let mut mesh = Mesh::with_texture(texture_id);
-        mesh.add_rect_with_uv(
-            rect,
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
+        mesh.add_rect_with_uv(rect, uv_rect, tint);
         self.push_shape(epaint::Shape::mesh(mesh));
     }
 

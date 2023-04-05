@@ -10,6 +10,10 @@ pub struct Image {
     pub hints: LayoutHints,
     #[builder(default)]
     pub min_size: Vec2,
+    #[builder(default = Rect::from_min_size(Pos2::ZERO, Vec2::new(1.0, 1.0)))]
+    pub uv_rect: Rect,
+    #[builder(default = Color32::WHITE)]
+    pub tint: Color32,
 }
 
 impl Widget for Image {
@@ -34,7 +38,7 @@ impl Widget for Image {
     }
 
     fn draw(&mut self, ctx: &Context, layout: &Layout) {
-        ctx.painter().image(layout.bounds, self.texture_id);
+        ctx.painter().image(layout.bounds, self.texture_id, self.uv_rect, self.tint);
     }
 
     fn layout_hints(&self) -> LayoutHints {

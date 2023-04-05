@@ -1,3 +1,5 @@
+use std::iter::repeat;
+
 use epaint::{emath::Align2, RectShape, Rounding};
 use guee_derives::Builder;
 
@@ -19,6 +21,10 @@ pub struct MenubarButton {
     pub inner_padding: Vec2,
     #[builder(default)]
     pub menu_min_width: f32,
+    #[builder(default)]
+    pub button_icons: Vec<(TextureId, Rect)>,
+    #[builder(default = Vec2::new(16.0, 16.0))]
+    pub icon_size: Vec2,
 }
 
 pub struct InnerWidgets {
@@ -76,9 +82,23 @@ impl Widget for MenubarButton {
                         IdGen::key("contents_v"),
                         self.button_options
                             .iter()
+                            .zip(
+                                // Add the button icons
+                                self.button_icons.iter().map(Some).chain(repeat(None)),
+                            )
                             .zip(inner_cbs.into_iter())
-                            .map(|(s, cb)| {
-                                Button::with_label(s)
+                            .map(|((s, ico), cb)| {
+                                let button = if let Some((tex_id, uv_rect)) = ico {
+                                    Button::with_icon_and_label(
+                                        s,
+                                        *tex_id,
+                                        *uv_rect,
+                                        self.icon_size,
+                                    )
+                                } else {
+                                    Button::with_label(s)
+                                };
+                                button
                                     .on_click(cb)
                                     .padding(padding)
                                     .align_contents(Align2::LEFT_CENTER)
