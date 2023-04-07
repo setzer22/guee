@@ -4,7 +4,7 @@ use crate::{
     extension_traits::Color32Ext,
     input::{Event, EventStatus, MouseButton},
     layout::{Layout, LayoutHints, SizeHint},
-    prelude::{Align, BoxContainer, Spacer, StyledWidget},
+    prelude::{Align, BoxContainer, StyledWidget},
     widget::{DynWidget, Widget},
     widget_id::{IdGen, WidgetId},
 };

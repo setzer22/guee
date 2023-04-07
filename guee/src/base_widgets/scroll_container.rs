@@ -141,7 +141,7 @@ impl Widget for VScrollContainer {
         // Set cursor transform
         let cursor_transform =
             TranslateScale::identity().translated(Vec2::Y * self.y_offset(layout, scrollbar_frac));
-        let ch_status = ctx.with_cursor_transform(cursor_transform, || {
+        ctx.with_cursor_transform(cursor_transform, || {
             let transformed_cursor_position = cursor_transform.transform_point(cursor_position);
             self.contents.widget.on_event(
                 ctx,
