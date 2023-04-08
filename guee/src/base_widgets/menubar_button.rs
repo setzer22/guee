@@ -259,7 +259,6 @@ impl Widget for MenubarButton {
                     && !layout.children[1].bounds.contains(mouse_pos)
                 {
                     state.is_open = false;
-                    println!("Dismiss!");
                 }
             }
         }

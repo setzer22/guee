@@ -367,7 +367,7 @@ impl Widget for DragValue {
             state.string_contents = Self::format_contents(self.value, self.num_decimals as usize);
         }
 
-        state.draw_scale_selector = dragging && self.scale_selector.is_some();
+        state.draw_scale_selector = !focused_now && dragging && self.scale_selector.is_some();
 
         // When the TextEdit is focused, it should behave like a regular
         // TextEdit, letting the user write anything in the text box
